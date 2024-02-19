@@ -1,0 +1,141 @@
+{
+  "parameters": [
+    {
+      "type": "ParameterTypeNumber",
+      "index": 0,
+      "name": "pitch",
+      "paramId": "pitch",
+      "minimum": 60,
+      "maximum": 1000,
+      "exponent": 1,
+      "steps": 0,
+      "initialValue": 440,
+      "isEnum": false,
+      "enumValues": [],
+      "displayName": "",
+      "unit": "Hz",
+      "order": 0,
+      "debug": false,
+      "visible": true,
+      "signalIndex": null,
+      "ioType": "IOTypeUndefined"
+    },
+    {
+      "type": "ParameterTypeNumber",
+      "index": 1,
+      "name": "vol",
+      "paramId": "vol",
+      "minimum": 0,
+      "maximum": 1,
+      "exponent": 1,
+      "steps": 0,
+      "initialValue": 0.5,
+      "isEnum": false,
+      "enumValues": [],
+      "displayName": "",
+      "unit": "linear",
+      "order": 0,
+      "debug": false,
+      "visible": true,
+      "signalIndex": null,
+      "ioType": "IOTypeUndefined"
+    },
+    {
+      "type": "ParameterTypeNumber",
+      "index": 2,
+      "name": "Name_TestSynth",
+      "paramId": "Name_TestSynth",
+      "minimum": 0,
+      "maximum": 1,
+      "exponent": 1,
+      "steps": 0,
+      "initialValue": 0,
+      "isEnum": false,
+      "enumValues": [],
+      "displayName": "",
+      "unit": "",
+      "order": 0,
+      "debug": false,
+      "visible": true,
+      "signalIndex": null,
+      "ioType": "IOTypeUndefined"
+    },
+    {
+      "type": "ParameterTypeNumber",
+      "index": 3,
+      "name": "Sys_tail",
+      "paramId": "Sys_tail",
+      "minimum": 0,
+      "maximum": 1,
+      "exponent": 1,
+      "steps": 0,
+      "initialValue": 5000,
+      "isEnum": false,
+      "enumValues": [],
+      "displayName": "",
+      "unit": "",
+      "order": 0,
+      "debug": false,
+      "visible": true,
+      "signalIndex": null,
+      "ioType": "IOTypeUndefined"
+    }
+  ],
+  "numParameters": 4,
+  "numSignalInParameters": 0,
+  "numSignalOutParameters": 0,
+  "numInputChannels": 0,
+  "numOutputChannels": 5,
+  "numMidiInputPorts": 0,
+  "numMidiOutputPorts": 0,
+  "externalDataRefs": [],
+  "patcherSerial": 0,
+  "inports": [
+    {
+      "tag": "abs_pos",
+      "meta": ""
+    }
+  ],
+  "outports": [],
+  "inlets": [],
+  "outlets": [
+    {
+      "type": "signal",
+      "index": 1,
+      "tag": "out1",
+      "meta": ""
+    },
+    {
+      "type": "signal",
+      "index": 2,
+      "tag": "out2",
+      "meta": ""
+    },
+    {
+      "type": "signal",
+      "index": 3,
+      "tag": "out3",
+      "meta": ""
+    },
+    {
+      "type": "signal",
+      "index": 4,
+      "tag": "out4",
+      "meta": ""
+    },
+    {
+      "type": "signal",
+      "index": 5,
+      "tag": "out5",
+      "meta": ""
+    }
+  ],
+  "presetid": "rnbo",
+  "meta": {
+    "architecture": "x64",
+    "rnboobjname": "rnbomatic",
+    "maxversion": "8.5.6",
+    "rnboversion": "1.2.1",
+    "name": "untitled"
+  }
+}
