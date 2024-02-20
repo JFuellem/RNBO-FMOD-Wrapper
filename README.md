@@ -3,6 +3,7 @@
 This is an FMOD Wrapper for RNBO, which simplifies the creation of plugins for FMOD.
 
 ## RNBO Design instructions
+
 1. Name your Plugin by adding a |param| object with argument ```NAME_<PluginName>```
 2. Create an RNBO patch as you like either as an instrument or effect. The presence of in~ and out~ objects determines the type.
 3. Add |param| objects that you need. min, max, value and unit attributes will automatically be transferred.
@@ -24,7 +25,18 @@ This is an FMOD Wrapper for RNBO, which simplifies the creation of plugins for F
 5. Export it as a C++ Source Code by choosing the RNBOExportDir as Output Directory. No other modifications are needed. Make sure, the export name stays rnbo_source.cpp.
 
 ## Build Instructions
-1. cd to the CMake folder ```cd CMake```
-2. ```cmake -S . -B <SomeFolder> -DPLUGIN_NAME=<PluginName>```
-33. ```cmake --build <SomeFolder>```
 
+1. Clone Repo and Download FMOD-API. Place repo and Inc folder into the same folder.
+2. cd to the CMake folder ```cd CMake```
+3. ```cmake -S . -B <SomeFolder> -DPLUGIN_NAME=<PluginName>```
+4. ```cmake --build <SomeFolder>```
+
+
+## Things to consider
+Feel free to try out the additional GUI Compiler [here](https://github.com/JFuellem/RNBO-FMOD-Compiler).
+
+The performance of these plugins is worse than the ones FMOD provides. You can test the performance with the profiler.
+
+If you find any bugs or something isn't working as expected, feel free to add a bug report or contact me.
+
+If you're feeling generous, you can donate [here](https://www.paypal.com/donate/?business=5WX6KRT4HFEU2&no_recurring=1&currency_code=CHF).
