@@ -12,7 +12,7 @@
 #include <format>
 #include <vector>
 
-#include "../RNBOExportDir/RNBO.h"
+#include "RNBO.h"
 #include "fmod.hpp"
 
 
