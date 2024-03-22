@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 3.10.0)
 project(${PLUGIN_NAME})
 
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_FLAGS -Ofast)
 
 add_library(${PROJECT_NAME} SHARED ../RNBOExportDir/RNBO.h ../RNBOWrapper/RNBO_FMOD.cpp ../RNBOExportDir/rnbo_source.cpp ../RNBOWrapper/RNBOWrapper.hpp ../RNBOExportDir/RNBO.cpp)
 
