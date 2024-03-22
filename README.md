@@ -22,7 +22,7 @@ This is an FMOD Wrapper for RNBO, which simplifies the creation of plugins for F
 
   If the plugin is added to an event as an effect, it automatically turns into a 3D event (even without a spatialiser). For instrument plugins, you must add a spatialiser to preview the effect in FMDO Studio.
   
-5. Export it as a C++ Source Code by choosing the RNBOExportDir as Output Directory. No other modifications are needed. Make sure, the export name stays rnbo_source.cpp.
+5. Export it as a C++ Source Code by choosing the RNBOExportDir as Output Directory. No other modifications are needed.
 
 ## Build Instructions
 
