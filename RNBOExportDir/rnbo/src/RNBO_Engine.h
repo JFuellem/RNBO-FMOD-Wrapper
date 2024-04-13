@@ -53,7 +53,7 @@ namespace RNBO {
 
 		PatcherInterface& getPatcher() const override { return *_patcher; }
 
-		/**
+		/** 
 		 * @brief Replace the currently running patcher
 		 * @return true replacment was successful
 		 * @return false otherwise
@@ -71,8 +71,8 @@ namespace RNBO {
 
 		bool prepareToProcess(number sampleRate, Index maxBlockSize, bool force = false) override;
 
-		void process(const SampleValue* const* audioInputs, Index numInputs,
-					 SampleValue* const* audioOutputs, Index numOutputs,
+		void process(SampleValue** audioInputs, Index numInputs,
+					 SampleValue** audioOutputs, Index numOutputs,
 					 Index sampleFrames,
 					 const MidiEventList* midiInput, MidiEventList* midiOutput) override;
 
@@ -82,9 +82,9 @@ namespace RNBO {
 
 		/**
 		 * @brief Check whether we are within the processing thread
-		 *
+		 * 
 		 * Mostly used for debugging purposes.
-		 *
+		 * 
 		 * @return true if called from inside the process() call on the thread
 		 * calling process()
 		 * @return false otherwise
@@ -247,7 +247,7 @@ namespace RNBO {
 			}
 		}
 
-		void sendParameter(Index index, bool ignoreValue) override {
+		void sendParameter(Index index) override {
 			this->getEngine()->notifyParameterValueChanged(index, this->getParameterValue(index), false);
 		}
 
@@ -256,11 +256,11 @@ namespace RNBO {
 			switch (index) {
 				case 0:
 					test_param1 = value;
-					this->sendParameter(0, false);
+					this->sendParameter(0);
 					break;
 				case 1:
 					test_param2 = value;
-					this->sendParameter(1, false);
+					this->sendParameter(1);
 					break;
 				default:
 					break;
@@ -282,8 +282,8 @@ namespace RNBO {
 
 		}
 
-		void process(const SampleValue* const* audioInputs, Index numInputs,
-					 SampleValue* const* audioOutputs, Index numOutputs,
+		void process(SampleValue** audioInputs, Index numInputs,
+					 SampleValue** audioOutputs, Index numOutputs,
 					 Index sampleFrames) override
 		{
 

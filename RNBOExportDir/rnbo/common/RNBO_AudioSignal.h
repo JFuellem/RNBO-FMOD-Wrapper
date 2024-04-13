@@ -13,7 +13,7 @@ namespace RNBO {
 	static MillisecondTime sampsToMs(SampleIndex samps, number sr);
 	static SampleValue* resizeSignal(SampleValue* sig, size_t oldSize, size_t vs);
 	static inline void zeroSignal(SampleValue* sig, size_t size);
-	static inline void copySignal(SampleValue *dst, const SampleValue * src, size_t size);
+	static inline void copySignal(SampleValue *dst, SampleValue *src, size_t size);
 	static inline bool isNaN(number v);
 	static void* allocateArray(size_t count, const char* type);
 	static number rand01();
@@ -59,7 +59,7 @@ namespace RNBO {
 		}
 	}
 
-	static inline void copySignal(SampleValue *dst, const SampleValue * src, size_t size)
+	static inline void copySignal(SampleValue *dst, SampleValue *src, size_t size)
 	{
 		Platform::get()->memcpy(dst, src, size * sizeof(SampleValue));
 	}
@@ -260,9 +260,6 @@ namespace RNBO {
 #define uint32_add(x, y) (UBinOpInt)x + (UBinOpInt)y
 #define uint32_trunc(x)	((UBinOpInt)((int64_t)(x)))
 #define uint32_rshift(x, y)	((UBinOpInt)x >> (UBinOpInt)y)
-
-#define imod(x, y) ((Int)x % (Int)y)
-#define imod_nocast(x, y) (x % y)
 
 } // namespace RNBO
 

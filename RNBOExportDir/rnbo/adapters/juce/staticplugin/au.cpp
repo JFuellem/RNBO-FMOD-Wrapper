@@ -1,21 +1,28 @@
+#include <inttypes.h>
 //Audio Units entrypoint/factory
-//defines pulled from JUCE
 
-#ifndef AUSDK_EXPORT
-#if __GNUC__
-#define AUSDK_EXPORT __attribute__((visibility("default"))) // NOLINT
-#else
-#warning export?
-#endif
-#endif
+//https://developer.apple.com/documentation/coreservices/componentresult
+typedef int32_t ComponentResult;
 
-#define JUCE_AU_ENTRY_POINT_NAME RNBO_Plugin_AUFactory
-
-//forward decl
+extern "C" ComponentResult StaticAUExportEntry(void * params, void* obj);
 extern "C" void* StaticAUExportFactory(const void * desc);
-extern "C" void* JUCE_AU_ENTRY_POINT_NAME (const /*AudioComponentDescription*/ void* inDesc);
 
-AUSDK_EXPORT extern "C" void* JUCE_AU_ENTRY_POINT_NAME (const /*AudioComponentDescription*/ void* inDesc)
-{
-		return StaticAUExportFactory(inDesc);
-}
+#define COMPONENT_ENTRYX(Name, Suffix) \
+    extern "C" __attribute__((visibility("default"))) ComponentResult Name ## Suffix (void* params, void* obj); \
+    extern "C" __attribute__((visibility("default"))) ComponentResult Name ## Suffix (void* params, void* obj) \
+    { \
+        return StaticAUExportEntry(params, obj); \
+    }
+
+#define FACTORY_ENTRYX(Name) \
+    extern "C" __attribute__((visibility("default"))) void* Name ## Factory (const void* desc); \
+    extern "C" __attribute__((visibility("default"))) void* Name ## Factory (const void* desc) \
+    { \
+        return StaticAUExportFactory(desc); \
+    }
+
+#define COMPONENT_ENTRY(Name, Suffix)   COMPONENT_ENTRYX(Name, Suffix)
+#define FACTORY_ENTRY(Name)             FACTORY_ENTRYX(Name)
+
+COMPONENT_ENTRY (RNBO_Plugin_AU, Entry)
+FACTORY_ENTRY (RNBO_Plugin_AU)

@@ -10,7 +10,7 @@
 
 #ifdef RNBO_INCLUDE_DESCRIPTION_FILE
 #include <rnbo_description.h>
-using RNBO::patcher_description;
+const nlohmann::json patcher_description = nlohmann::json::parse(std::string(RNBO::patcher_description));
 #endif
 
 //rnbo_bufferref doesn't use namespaced style symbols, so expose them as needed here
@@ -19,9 +19,6 @@ using c74::max::t_max_err;
 using c74::max::t_buffer_ref;
 using c74::max::t_object;
 #include <adapters/max/rnbo_bufferref.h>
-
-using c74::max::t_systhread_mutex;
-#include <adapters/max/rnbo_data_loader.h>
 
 using RNBO::Index;
 using RNBO::ParameterIndex;
@@ -38,7 +35,6 @@ using RNBO::ExternalDataHandler;
 using RNBO::ExternalDataIndex;
 using RNBO::ExternalDataRef;
 using RNBO::ExternalDataId;
-using RNBO::ExternalDataInfo;
 using RNBO::MessageEvent;
 using RNBO::MidiEvent;
 using RNBO::TAG;
@@ -148,7 +144,7 @@ class Sync {
 			mCachedItm = itm;
 		}
 
-		void updateTime(MillisecondTime scheduleNow, RNBO::CoreObject& core) {
+		void updateTime(MillisecondTime scheduleNow, std::function<void(RNBO::EventVariant)> scheduleEvent) {
 			auto itm = mCachedItm;
 			if (!itm)
 				return;
@@ -162,17 +158,17 @@ class Sync {
 
 			if (tempo != -1 && tempo != mLastTempo) {
 				RNBO::TempoEvent event(scheduleNow, tempo);
-				core.scheduleEvent(event);
+				scheduleEvent(event);
 				mLastTempo = tempo;
 			}
 			if (transportState != -1 && transportState != mLastTransport) {
 				RNBO::TransportEvent event(scheduleNow, transportState ? RNBO::TransportState::RUNNING : RNBO::TransportState::STOPPED);
-				core.scheduleEvent(event);
+				scheduleEvent(event);
 				mLastTransport = transportState;
 			}
 			if (beattime != -1 && beattime != mLastBeatTime) {
 				RNBO::BeatTimeEvent event(scheduleNow, beattime);
-				core.scheduleEvent(event);
+				scheduleEvent(event);
 				mLastBeatTime = beattime;
 			}
 			if (
@@ -180,141 +176,96 @@ class Sync {
 					(denominator != -1 && denominator != mLastDenominator)
 				 ) {
 				RNBO::TimeSignatureEvent event(scheduleNow, numerator, denominator);
-				core.scheduleEvent(event);
+				scheduleEvent(event);
 				mLastNumerator = numerator;
 				mLastDenominator = denominator;
 			}
 		}
 
-		void setRunning(bool v) {
+		void withItm(std::function<void(c74::max::t_itm*)> f) {
+			//XXX should we lock around mCachedItm ??
 			auto itm = mCachedItm;
 			if (itm) {
+				f(itm);
+			}
+		}
+
+		void setRunning(bool v) {
+			withItm([v](c74::max::t_itm* itm) {
 				if (v) {
 					itm_resume(itm);
 				} else {
 					itm_pause(itm);
 				}
-			}
+			});
 		}
 
 		void setTempo(double v) {
-			auto itm = mCachedItm;
-			if (itm) {
+			withItm([v, this](c74::max::t_itm* itm) {
 				object_attr_setfloat(itm, mSymTempo, v);
-			}
+			});
 		}
 
 		void setBeatTime(double v) {
-			auto itm = mCachedItm;
-			if (itm) {
+			withItm([v](c74::max::t_itm* itm) {
 				//XXX fixed 480 PPQ?
 				itm_seek(itm, itm_getticks(itm), v * 480, false);
-			}
+			});
 		}
 
 		void setTimeSignature(double n, double d) {
-			auto itm = mCachedItm;
-			if (itm) {
+			withItm([n, d](c74::max::t_itm* itm) {
 				itm_settimesignature(itm, n, d, 0);
-			}
+			});
 		}
 };
 
 //data handler, provides max buffers to RNBO
 class MaxExternalDataHandler : public RNBO::ExternalDataHandler {
 	private:
-		std::vector<std::pair<t_rnbo_bufferref *, t_rnbo_data_loader *>> mHandlers;
+		std::vector<t_rnbo_bufferref *> mBuffers;
 		std::vector<std::unique_ptr<attr_buffer>> mAttributes;
-		std::vector<t_object *> mBuffers;
+
+		//iterator helper
+		void each(DataRefIndex numRefs, ConstRefList refList, std::function<void(ExternalDataIndex, const ExternalDataRef* const, t_rnbo_bufferref *)> f) {
+			for (ExternalDataIndex i = 0; i < std::min((ExternalDataIndex)mBuffers.size(), (ExternalDataIndex)numRefs); i++) {
+				f(i, refList[i], mBuffers[i]);
+			}
+		}
 	public:
 		MaxExternalDataHandler(c74::min::object_base * owner, RNBO::CoreObject& rnbo) {
-			static t_symbol *rnbo_data_loader_class = c74::max::gensym("rnbo_data_loader");
-			static t_symbol *rnbo_buffer_refclass = c74::max::gensym("rnbo_bufferref");
-			static t_symbol *bufferclass = c74::max::gensym("buffer~");
-			static t_symbol *url_sym = c74::max::gensym("url");
-			static t_symbol *replace_sym = c74::max::gensym("replace");
-
 			//register the class, will not double register.
 			//min creates an object before it sets up the class so we regsiter on demand
 			rnbo_bufferref_register();
-			rnbo_data_loader_register();
-
 			ExternalDataIndex count = rnbo.getNumExternalDataRefs();
 			for (ExternalDataIndex i = 0; i < count; i++) {
-				ExternalDataInfo info = rnbo.getExternalDataInfo(i);
 				ExternalDataId memoryId = rnbo.getExternalDataId(i);
+				auto id = c74::min::symbol(c74::max::gensym(memoryId));
 
-				bool hasfile = info.file && strlen(info.file);
-
-
-				if (info.type == RNBO::DataType::Float32AudioBuffer) {
-					auto id = c74::min::symbol(c74::max::gensym(memoryId));
-
-					auto b = reinterpret_cast<t_rnbo_bufferref *>(c74::max::object_new(c74::max::CLASS_NOBOX, rnbo_buffer_refclass, id));
-
-					//create a max buffer
-					c74::max::t_atom argv;
-					c74::max::atom_setsym(&argv, id);
-					auto buf = reinterpret_cast<t_object *>(c74::max::object_new(c74::max::CLASS_BOX, bufferclass, bufferclass, 1, &argv));
-					mBuffers.push_back(buf);
-
-					//load data
-					if (hasfile) {
-						auto filesym = c74::max::gensym(info.file);
-						c74::max::t_buffer_obj *b_obj = buffer_ref_getobject(b->r_buffer_ref);
-
-						if (b_obj) {
-							if (rnbo_path_is_url(info.file)) {
-								c74::max::object_attr_setsym(b_obj, url_sym, filesym);
-							} else {
-								c74::max::t_atom rv;
-								c74::max::atom_setsym(&argv, filesym);
-								c74::max::object_method_typed(b_obj, replace_sym, 1, &argv, &rv);
+				auto b = rnbo_bufferref_new(c74::min::k_sym__empty);
+				mBuffers.emplace_back(b);
+				mAttributes.emplace_back(std::make_unique<attr_buffer>(
+						owner,
+						id,
+						rnbo_bufferref_getname(b),
+						c74::min::setter {
+							[b](const c74::min::atoms& args, const int inlet) -> c74::min::atoms {
+								c74::min::symbol in = args[0];
+								rnbo_bufferref_setname(b, in);
+								return { };
+							}
+						},
+						c74::min::getter {
+							[b]() -> c74::min::atoms {
+								return { rnbo_bufferref_getname(b) };
 							}
 						}
-					}
-
-					mHandlers.emplace_back(std::make_pair(b, nullptr));
-					mAttributes.emplace_back(std::make_unique<attr_buffer>(
-							owner,
-							id,
-							rnbo_bufferref_getname(b),
-							c74::min::setter {
-								[b](const c74::min::atoms& args, const int inlet) -> c74::min::atoms {
-									c74::min::symbol in = args[0];
-									rnbo_bufferref_setname(b, in);
-									return { };
-								}
-							},
-							c74::min::getter {
-								[b]() -> c74::min::atoms {
-									return { rnbo_bufferref_getname(b) };
-								}
-							}
-					));
-				} else if (info.type == RNBO::DataType::Float64AudioBuffer && hasfile) {
-					//create loader and load
-					t_rnbo_data_loader * loader = (t_rnbo_data_loader *) c74::max::object_new(c74::max::CLASS_NOBOX, rnbo_data_loader_class, info.type);
-					if (loader) {
-						rnbo_data_loader_load(loader, info.file);
-					}
-
-					mHandlers.emplace_back(std::make_pair(nullptr, loader));
-				} else {
-					//we're using index based lookup so we need something in the vector even if the data isn't valid
-					mHandlers.emplace_back(std::make_pair(nullptr, nullptr));
-				}
+				));
 			}
 			rnbo.setExternalDataHandler(this);
 		}
 
 		~MaxExternalDataHandler() {
-			for (auto p: mHandlers) {
-				if (p.first)
-					c74::max::object_free(p.first);
-				if (p.second)
-					c74::max::object_free(p.second);
-			}
 			for (auto b: mBuffers) {
 				c74::max::object_free(b);
 			}
@@ -327,29 +278,16 @@ class MaxExternalDataHandler : public RNBO::ExternalDataHandler {
 
 		virtual void processBeginCallback(DataRefIndex numRefs, ConstRefList refList, UpdateRefCallback updateDataRef, ReleaseRefCallback releaseDataRef) override {
 			//iterate over the references and lock the buffers if possible
-			for (ExternalDataIndex i = 0; i < std::min((ExternalDataIndex)mHandlers.size(), (ExternalDataIndex)numRefs); i++) {
-				auto& h = mHandlers[i];
-				auto ref = refList[i];
-				auto bufr = h.first;
-				auto loader = h.second;
-				if (bufr) {
+			each(numRefs, refList, [updateDataRef, releaseDataRef](ExternalDataIndex i, const ExternalDataRef* const ref, t_rnbo_bufferref * bufr) {
 					DataRefBindMaxBuffer(i, ref, bufr, updateDataRef, releaseDataRef);
-				} else if (loader) {
-					RNBO::DataLoaderHandoffData(i, ref, loader, updateDataRef, releaseDataRef);
-				}
-			}
+			});
 		}
 
 		virtual void processEndCallback(DataRefIndex numRefs, ConstRefList refList) override {
 			//iterate, mark buffers dirty if needed and unlock
-			for (ExternalDataIndex i = 0; i < std::min((ExternalDataIndex)mHandlers.size(), (ExternalDataIndex)numRefs); i++) {
-				auto& h = mHandlers[i];
-				auto ref = refList[i];
-				auto bufr = h.first;
-				if (bufr) {
+			each(numRefs, refList, [](ExternalDataIndex i, const ExternalDataRef* const ref, t_rnbo_bufferref * bufr) {
 					DataRefUnbindMaxBuffer(ref, bufr);
-				}
-			}
+			});
 		}
 };
 
@@ -523,10 +461,9 @@ class rnbo_external_wrapper :
 	, public c74::min::vector_operator<>
 #endif
 {
+	//don't generate max ref
+	MIN_FLAGS { c74::min::documentation_flags::do_not_generate };
 	public:
-		//don't generate max ref
-		MIN_FLAGS { c74::min::documentation_flags::do_not_generate };
-
 		virtual ~rnbo_external_wrapper() {
 			//make sure the process method isn't currently running
 			LockGuard guard(mDSPStateMutex);
@@ -553,13 +490,8 @@ class rnbo_external_wrapper :
 			auto p = c74::max::gensym("#P");
 			if (p) {
 				auto patcher = (t_object *)p->s_thing;
-				if (patcher) {
+				if (patcher)
 					mIsInLive = c74::max::object_method(patcher, c74::max::gensym("isinlive"));
-
-					c74::max::t_object *plugdevice = nullptr;
-					c74::max::object_method(patcher, c74::max::gensym("getplugdevice"), &plugdevice);
-					mIsRunningInLive = plugdevice && c74::max::object_classname(plugdevice) == c74::max::gensym("mfl_device");
-				}
 			}
 
 			//handle inlets and outlets
@@ -1116,7 +1048,10 @@ class rnbo_external_wrapper :
 			//couple the rnbotime and this object's scheduler's time
 			mRNBOObj.setCurrentTime(time);
 			if (mSync) {
-				mSync->updateTime(time, mRNBOObj);
+				mSync->updateTime(time, [this](RNBO::EventVariant event) {
+					//TODO should use mEventHandler ?
+					mRNBOObj.scheduleEvent(event);
+				});
 			}
 			mRNBOObj.process(audioInputs, numInputs, audioOutputs, numOutputs, sampleFrames, nullptr, nullptr);
 			mProcessing.store(false);
@@ -1264,7 +1199,6 @@ class rnbo_external_wrapper :
 		MillisecondTime mScheduleOffset = 0;
 
 		bool mIsInLive = false;
-		bool mIsRunningInLive = false;
 		bool mDSPOn = false;
 		Mutex mDSPStateMutex;
 
@@ -1283,15 +1217,17 @@ class rnbo_external_wrapper :
 
 		//ripped from rnbo~
 		MillisecondTime scheduleNow() {
-			const bool isaudio = c74::max::systhread_isaudiothread();
-
-			// we running in the M4L editor we currently run into severe timing problems in the UI
-			// thread, so we fall back to scheduling events as soon as possible which might result in some jitter
-			// but at least they are guaranteed to get through
-			if (mIsInLive && !mIsRunningInLive && !isaudio) {
-				return RNBO::RNBOTimeNow;
+			MillisecondTime n = now();
+#ifdef RNBO_WRAPPER_HAS_AUDIO
+			if (!c74::max::systhread_isaudiothread()) {
+				// if the event does not arrive in an audio thread (scheduler in audio interrupt)
+				// then we want to schedule it for the next buffer
+				// this means we introduce latency, but we keep the events times correctly
+				// relative to each other
+				n += mScheduleOffset;
 			}
-			return now();
+#endif
+			return n;
 		}
 
 		c74::min::logger mErrorLogger {
@@ -1307,12 +1243,10 @@ class rnbo_external_wrapper :
 		RNBO::CoreObject mRNBOObj;
 };
 
-#ifndef RNBO_MAX_NO_CREATE_MIN_WRAPPER
 #ifndef RNBO_WRAPPER_MAX_NAME
 #error(you must define RNBO_WRAPPER_MAX_NAME)
 #else
 //expand tokens before calling MIN_EXTERNAL_CUSTOM
 #define XMIN_EXTERNAL_CUSTOM(a, b) MIN_EXTERNAL_CUSTOM(a, b)
 XMIN_EXTERNAL_CUSTOM(rnbo_external_wrapper, RNBO_WRAPPER_MAX_NAME);
-#endif
 #endif

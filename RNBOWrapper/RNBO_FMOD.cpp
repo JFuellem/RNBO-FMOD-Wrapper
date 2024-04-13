@@ -208,11 +208,9 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_dspprocess(FMOD_DSP_STATE *dsp_state, unsigned 
         
         return FMOD_OK;
     }
-#ifdef __APPLE__
-    state->rnboObj->process<float*, float*>(inbufferarray[0].buffers[0], numInChans, outbufferarray[0].buffers[0], numChans, length);
-#elif _WIN64
+
     state->rnboObj->process<float*>(inbufferarray[0].buffers[0], numInChans, outbufferarray[0].buffers[0], numChans, length);
-#endif
+
     if(!state->isInstrument && state->inputsIdle)
     {
         if (state->tailLength <= 0)
