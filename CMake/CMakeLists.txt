@@ -3,6 +3,10 @@
 
 cmake_minimum_required(VERSION 3.10.0)
 
+if(APPLE)
+set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
+endif()
+
 project(${PLUGIN_NAME})
 
 set(CMAKE_CXX_STANDARD 14)
