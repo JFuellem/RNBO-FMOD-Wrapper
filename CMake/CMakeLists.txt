@@ -9,7 +9,7 @@ endif()
 
 project(${PLUGIN_NAME})
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS -Ofast)
 
 add_library(${PROJECT_NAME} SHARED ../RNBOExportDir/rnbo/RNBO.h ../RNBOWrapper/RNBO_FMOD.cpp ../RNBOExportDir/rnbo_source.cpp ../RNBOWrapper/RNBOWrapper.hpp ../RNBOExportDir/rnbo/RNBO.cpp)
