@@ -9,7 +9,6 @@
 #define RNBOWrapper_hpp
 
 #include <stdio.h>
-#include <format>
 #include <vector>
 
 #include "RNBO.h"
