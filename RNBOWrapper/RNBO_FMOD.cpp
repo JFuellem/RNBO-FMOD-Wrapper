@@ -35,7 +35,6 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_sys_mix (FMOD_DSP_STATE *dsp_state, int stage);
 static FMOD_DSP_PARAMETER_DESC rnboParameters[MAX_RNBO_PARAMETERS];
 static bool FMOD_RNBO_Running = false;
 static size_t userData[10];
-size_t *userDataPoints[10] = {};
 FMOD_DSP_PARAMETER_DESC *FMOD_RNBO_dspparam[MAX_RNBO_PARAMETERS] = {};
 
 enum userStorageIndex
@@ -278,8 +277,8 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_dspsetparamdata(FMOD_DSP_STATE *dsp_state, int 
     FMOD_DSP_GETUSERDATA(dsp_state, &indexptr);
     size_t *posIndex = static_cast<size_t*>(indexptr);
     
-    FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "DataOutside Index: ","%i",index);
-    FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "DataOutside User: ","%i", posIndex[0]);
+    //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "DataOutside Index: ","%i",index);
+    //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "DataOutside User: ","%i", posIndex[0]);
 
     if(index == posIndex[FMOD_3D_ATTR])
     {

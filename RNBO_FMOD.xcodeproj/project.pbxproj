@@ -50,6 +50,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		D71C27772C294DC2004F6F16 /* src */ = {isa = PBXFileReference; lastKnownFileType = folder; path = src; sourceTree = "<group>"; };
+		D71C27782C294DC2004F6F16 /* common */ = {isa = PBXFileReference; lastKnownFileType = folder; path = common; sourceTree = "<group>"; };
 		D7A1318C2B59E94B0079D7AA /* RNBOWrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = RNBOWrapper.cpp; sourceTree = "<group>"; };
 		D7A1318D2B59E94B0079D7AA /* RNBOWrapper.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = RNBOWrapper.hpp; sourceTree = "<group>"; };
 		D7A3200C2AFCEBE500EBC112 /* libRNBO_FMOD.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libRNBO_FMOD.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -182,6 +184,8 @@
 			isa = PBXGroup;
 			children = (
 				D7F7C7E82BCAF9550003A118 /* common */,
+				D71C27782C294DC2004F6F16 /* common */,
+				D71C27772C294DC2004F6F16 /* src */,
 				D7F7C84C2BCAF9550003A118 /* .gitignore */,
 				D7F7C84D2BCAF9550003A118 /* LICENSE */,
 				D7F7C84E2BCAF9550003A118 /* RNBO.cpp */,

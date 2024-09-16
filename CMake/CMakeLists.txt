@@ -14,7 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS -Ofast)
 
-add_library(${PROJECT_NAME} SHARED ../RNBOExportDir/rnbo/RNBO.h ../RNBOWrapper/RNBO_FMOD.cpp ../RNBOExportDir/rnbo_source.cpp ../RNBOWrapper/RNBOWrapper.hpp ../RNBOExportDir/rnbo/RNBO.cpp)
+add_library(${PROJECT_NAME} SHARED ../SrcExportDir/rnbo/RNBO.h ../RNBOWrapper/RNBO_FMOD.cpp ../SrcExportDir/rnbo_source.cpp ../RNBOWrapper/RNBOWrapper.hpp ../SrcExportDir/rnbo/RNBO.cpp)
 
 if(APPLE OR UNIX)
  set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ../BuildProducts)
@@ -23,9 +23,9 @@ else()
 endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE ./inc)
-target_include_directories(${PROJECT_NAME} PRIVATE ../RNBOExportDir/rnbo)
-target_include_directories(${PROJECT_NAME} PRIVATE ../RNBOExportDir/rnbo/common)
-target_include_directories(${PROJECT_NAME} PRIVATE ../RNBOExportDir)
+target_include_directories(${PROJECT_NAME} PRIVATE ../SrcExportDir/rnbo)
+target_include_directories(${PROJECT_NAME} PRIVATE ../SrcExportDir/rnbo/common)
+target_include_directories(${PROJECT_NAME} PRIVATE ../SrcExportDir)
 
 
 
