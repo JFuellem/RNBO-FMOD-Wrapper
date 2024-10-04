@@ -66,6 +66,11 @@ namespace RNBO {
 			RNBO_UNUSED(time);
 		}
 
+		void processParameterBangEvent(ParameterIndex index, MillisecondTime time) override {
+			RNBO_UNUSED(index);
+			RNBO_UNUSED(time);
+		}
+
 		void processNormalizedParameterEvent(ParameterIndex index, ParameterValue value, MillisecondTime time) override {
 			RNBO_UNUSED(index);
 			RNBO_UNUSED(value);
@@ -96,8 +101,8 @@ namespace RNBO {
 			_maxBlockSize = maxBlockSize;
 		}
 
-		void process(SampleValue** audioInputs, Index numInputs,
-					 SampleValue** audioOutputs, Index numOutputs,
+		void process(const SampleValue* const* audioInputs, Index numInputs,
+					 SampleValue* const* audioOutputs, Index numOutputs,
 					 Index sampleFrames) override
 		{
 			RNBO_UNUSED(audioInputs);

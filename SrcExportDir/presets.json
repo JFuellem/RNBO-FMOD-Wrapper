@@ -2,23 +2,11 @@
   {
     "name": "untitled",
     "preset": {
-      "Name_SimpleSine": {
+      "Name_TestMultiChannel": {
         "value": 0
       },
-      "__sps": {
-        "randSine": [
-          {},
-          {},
-          {},
-          {},
-          {}
-        ]
-      },
-      "y-angle": {
-        "value": -33
-      },
-      "z-angle": {
-        "value": -71
+      "volume": {
+        "value": 0.1
       }
     }
   }

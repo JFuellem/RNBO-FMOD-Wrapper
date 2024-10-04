@@ -14,7 +14,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS -Ofast)
 
-add_library(${PROJECT_NAME} SHARED ../SrcExportDir/rnbo/RNBO.h ../RNBOWrapper/RNBO_FMOD.cpp ../SrcExportDir/rnbo_source.cpp ../RNBOWrapper/RNBOWrapper.hpp ../SrcExportDir/rnbo/RNBO.cpp)
+file(GLOB WRAPPER_FILES "../RNBOWrapper/*")
+
+add_library(${PROJECT_NAME} SHARED ../SrcExportDir/rnbo/RNBO.h ../SrcExportDir/rnbo_source.cpp ../SrcExportDir/rnbo/RNBO.cpp ${WRAPPER_FILES})
 
 if(APPLE OR UNIX)
  set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ../BuildProducts)

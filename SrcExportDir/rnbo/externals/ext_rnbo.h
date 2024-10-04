@@ -46,7 +46,7 @@ namespace RNBO {
 	typedef ParameterValue (*f_ext_constrainParameterValue)(h_extHandle handle, ParameterIndex index, ParameterValue value);
 
 	typedef void (*f_ext_prepareToProcess)(h_extHandle handle, double sampleRate, Index blockSize, bool force);
-	typedef void (*f_ext_process)(h_extHandle handle, SampleValue** audioInputs, Index numInputs, SampleValue** audioOutputs, Index numOutputs, Index sampleFrames);
+	typedef void (*f_ext_process)(h_extHandle handle, const SampleValue* const* audioInputs, Index numInputs, SampleValue* const* audioOutputs, Index numOutputs, Index sampleFrames);
 
 	typedef Index (*f_ext_getNumInputChannels)(h_extHandle handle);
 	typedef Index (*f_ext_getNumOutputChannels)(h_extHandle handle);
@@ -58,8 +58,8 @@ namespace RNBO {
 	typedef void (*f_host_scheduleClockEventWithValue)(h_hostHandle hostHandle, ClockId clockIndex, MillisecondTime delay, ParameterValue value);
 	typedef void (*f_host_flushClockEvents)(h_hostHandle hostHandle, ClockId clockIndex, bool execute);
 	typedef void (*f_host_flushClockEventsWithValue)(h_hostHandle hostHandle, ClockId clockIndex, ParameterValue value, bool execute);
-	typedef void (*f_host_sendMidiEvent)(h_hostHandle hostHandle, int port, int b1, int b2, int b3);
-	typedef void (*f_host_sendMidiEventList)(h_hostHandle hostHandle, int port, const list& data);
+	typedef void (*f_host_sendMidiEvent)(h_hostHandle hostHandle, int port, int b1, int b2, int b3, MillisecondTime time);
+	typedef void (*f_host_sendMidiEventList)(h_hostHandle hostHandle, int port, const list& data, MillisecondTime time);
 
 	typedef MillisecondTime (*f_host_getCurrentTime)(h_hostHandle hostHandle);
 

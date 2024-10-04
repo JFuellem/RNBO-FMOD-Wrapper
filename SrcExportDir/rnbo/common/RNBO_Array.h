@@ -1,6 +1,8 @@
 #ifndef _RNBO_TUPLE_H_
 #define _RNBO_TUPLE_H_
 
+#include "RNBO_List.h"
+
 namespace RNBO {
 
 	/**
@@ -9,12 +11,24 @@ namespace RNBO {
 	template<class T, size_t N> class array {
 	public:
 
+		array() {
+			for (size_t i = 0; i < N; i++) {
+				_values[i] = _dummy;
+			}
+		}
+
 		template<typename... Ts> array(Ts ... args)
 		{
 			// since allocating an array of 0 length is invalid, we always allocate at least length 1
 			T values[sizeof...(args) + 1] = {static_cast<T>(args)...};
 			for (size_t i = 0; i < sizeof...(args) && i < N; i++) {
 				_values[i] = values[i];
+			}
+		}
+
+		array(const listbase<T>& l) {
+			for (size_t i = 0; i < N && i < l.length; i++) {
+				_values[i] = l[i];
 			}
 		}
 
@@ -53,6 +67,16 @@ namespace RNBO {
 				return _dummy;
 			}
 			return _values[n];
+		}
+
+		operator listbase<T>() const {
+			listbase<T> tmp;
+			tmp.reserve(N);
+			for (size_t i = 0; i < N; i++) {
+				tmp.push(_values[i]);
+			}
+
+			return tmp;
 		}
 
 	private:

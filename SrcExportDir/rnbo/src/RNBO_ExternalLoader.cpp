@@ -62,8 +62,8 @@ namespace RNBO {
 	void scheduleClockEventWithValue(h_hostHandle hostHandle, ClockId clockIndex, MillisecondTime delay, ParameterValue value);
 	void flushClockEvents(h_hostHandle hostHandle, ClockId clockIndex, bool execute);
 	void flushClockEventsWithValue(h_hostHandle hostHandle, ClockId clockIndex, ParameterValue value, bool execute);
-	void sendMidiEvent(h_hostHandle hostHandle, int port, int b1, int b2, int b3);
-	void sendMidiEventList(h_hostHandle hostHandle, int port, const list& data);
+	void sendMidiEvent(h_hostHandle hostHandle, int port, int b1, int b2, int b3, MillisecondTime time);
+	void sendMidiEventList(h_hostHandle hostHandle, int port, const list& data, MillisecondTime time);
 	MillisecondTime getCurrentTime(h_hostHandle hostHandle);
 	void sendOutlet(h_hostHandle hostHandle, void* sender, OutletIndex index, ParameterValue value, SampleOffset sampleOffset);
 	void consolelog(LogLevel level, const char *message);
@@ -102,16 +102,16 @@ namespace RNBO {
 		externalLoader->getEngine()->flushClockEventsWithValue(externalLoader->getEventTarget(), clockIndex, value, execute);
 	}
 
-	void sendMidiEvent(h_hostHandle hostHandle, int port, int b1, int b2, int b3)
+	void sendMidiEvent(h_hostHandle hostHandle, int port, int b1, int b2, int b3, MillisecondTime time)
 	{
 		ExternalLoader *externalLoader = static_cast<ExternalLoader*>(hostHandle);
-		externalLoader->getEngine()->sendMidiEvent(port, b1, b2, b3);
+		externalLoader->getEngine()->sendMidiEvent(port, b1, b2, b3, time);
 	}
 
-	void sendMidiEventList(h_hostHandle hostHandle, int port, const list& data)
+	void sendMidiEventList(h_hostHandle hostHandle, int port, const list& data, MillisecondTime time)
 	{
 		ExternalLoader *externalLoader = static_cast<ExternalLoader*>(hostHandle);
-		externalLoader->getEngine()->sendMidiEventList(port, data);
+		externalLoader->getEngine()->sendMidiEventList(port, data, time);
 	}
 
 	MillisecondTime getCurrentTime(h_hostHandle hostHandle)
@@ -364,7 +364,7 @@ namespace RNBO {
 		_externalModule->_ext_prepareToProcess(_extHandle, sampleRate, maxBlockSize, force);
 	}
 
-	void ExternalLoader::process(SampleValue** audioInputs, Index numInputs, SampleValue** audioOutputs, Index numOutputs, Index sampleFrames)
+	void ExternalLoader::process(const SampleValue* const* audioInputs, Index numInputs, SampleValue* const* audioOutputs, Index numOutputs, Index sampleFrames)
 	{
 		_externalModule->_ext_process(_extHandle, audioInputs, numInputs, audioOutputs, numOutputs, sampleFrames);
 	}
