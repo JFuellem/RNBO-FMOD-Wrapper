@@ -26,9 +26,9 @@ This is an FMOD Wrapper for RNBO, which simplifies the creation of plugins for F
 
 ## Build Instructions
 
-1. Clone Repo and Download FMOD-API. Place repo and Inc folder into the same folder.
-2. cd to the CMake folder ```cd CMake```
-3. ```cmake -S . -B <SomeFolder> -DPLUGIN_NAME=<PluginName>```
+1. Clone Repo and Download FMOD-API. Copy the FMOD api/core/inc folder into the CMake folder.
+2. cd to the CMake folder ```cd /path/to/CMake```
+3. ```cmake -B <SomeFolder> -DPLUGIN_NAME=<PluginName>```
 4. ```cmake --build <SomeFolder>```
 
 

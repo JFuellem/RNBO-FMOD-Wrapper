@@ -125,7 +125,7 @@
 		D7A320032AFCEBE400EBC112 = {
 			isa = PBXGroup;
 			children = (
-				D7F7C8562BCAF9550003A118 /* RNBOExportDir */,
+				D7F7C8562BCAF9550003A118 /* SrcExportDir */,
 				D70269752B83CF2E0083FA80 /* RNBOWrapper */,
 				D7A3200D2AFCEBE500EBC112 /* Products */,
 			);
@@ -195,7 +195,7 @@
 			path = rnbo;
 			sourceTree = "<group>";
 		};
-		D7F7C8562BCAF9550003A118 /* RNBOExportDir */ = {
+		D7F7C8562BCAF9550003A118 /* SrcExportDir */ = {
 			isa = PBXGroup;
 			children = (
 				D7F7C8512BCAF9550003A118 /* rnbo */,
@@ -204,7 +204,7 @@
 				D7F7C8542BCAF9550003A118 /* presets.json */,
 				D7F7C8552BCAF9550003A118 /* rnbo_source.cpp */,
 			);
-			path = RNBOExportDir;
+			path = SrcExportDir;
 			sourceTree = SOURCE_ROOT;
 		};
 /* End PBXGroup section */
