@@ -158,6 +158,10 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_dspcreate(FMOD_DSP_STATE *dsp_state)
     state->multiChannelExpandable = ((UserDataStruct*)rawData)->multiChannelExtendable;
     FMOD_DSP_GETSAMPLERATE(dsp_state, &state->sampleRate);
     
+    //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Create","Taillength: %d", state->tailLength);
+    //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Create","Is istrument: %d", state->isInstrument);
+    //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Create","Multichannelthing: %d", state->multiChannelExpandable);
+    
     state->Init();
     
     return FMOD_OK;
@@ -211,14 +215,15 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_dspprocess(FMOD_DSP_STATE *dsp_state, unsigned 
                 state->interleaveBuffer = new float[length * chans];
             }
             
-            outbufferarray->speakermode = GetSpeakermode(chans);
-            outbufferarray->buffernumchannels[0] = chans;
         }
         else
         {
-            outbufferarray->speakermode = GetSpeakermode(numChans);
-            outbufferarray->buffernumchannels[0] = (int)numChans;
+            while (!state->rnboObj[0]->prepareToProcess(state->sampleRate,4096)) {}
         }
+
+        outbufferarray->speakermode = GetSpeakermode(numChans);
+        outbufferarray->buffernumchannels[0] = (int)numChans;
+        
         
         if(inputsidle != state->lastIdleState)
         {

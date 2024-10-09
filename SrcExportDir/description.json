@@ -3,17 +3,17 @@
     {
       "type": "ParameterTypeNumber",
       "index": 0,
-      "name": "volume",
-      "paramId": "volume",
-      "minimum": 0,
-      "maximum": 1,
+      "name": "freq",
+      "paramId": "freq",
+      "minimum": 20,
+      "maximum": 3000,
       "exponent": 1,
       "steps": 0,
-      "initialValue": 0.1,
+      "initialValue": 440,
       "isEnum": false,
       "enumValues": [],
       "displayName": "",
-      "unit": "linear",
+      "unit": "",
       "order": 0,
       "debug": false,
       "visible": true,
@@ -23,8 +23,8 @@
     {
       "type": "ParameterTypeNumber",
       "index": 1,
-      "name": "Name_TestMultiChannel",
-      "paramId": "Name_TestMultiChannel",
+      "name": "Name_Bell",
+      "paramId": "Name_Bell",
       "minimum": 0,
       "maximum": 1,
       "exponent": 1,
@@ -44,7 +44,7 @@
   "numParameters": 2,
   "numSignalInParameters": 0,
   "numSignalOutParameters": 0,
-  "numInputChannels": 1,
+  "numInputChannels": 0,
   "numOutputChannels": 1,
   "numMidiInputPorts": 0,
   "numMidiOutputPorts": 0,
@@ -52,14 +52,7 @@
   "patcherSerial": 0,
   "inports": [],
   "outports": [],
-  "inlets": [
-    {
-      "type": "signal",
-      "index": 1,
-      "tag": "in1",
-      "meta": ""
-    }
-  ],
+  "inlets": [],
   "outlets": [
     {
       "type": "signal",
@@ -71,9 +64,9 @@
   "presetid": "rnbo",
   "meta": {
     "architecture": "x64",
-    "filename": "simpleGain.maxpat",
+    "filename": "SineBellTest.maxpat",
     "rnboobjname": "rnbomatic",
-    "maxversion": "8.6.4",
+    "maxversion": "8.6.2",
     "rnboversion": "1.2.6",
     "name": "untitled"
   }

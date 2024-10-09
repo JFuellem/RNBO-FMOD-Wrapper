@@ -1,0 +1,11 @@
+#This file was created with the RNBO-FMOD-Wrapper-Compiler. It's safe to delete if you feel like it.
+#CMAKE_HOST_SYSTEM_NAME
+cmake_minimum_required(VERSION 3.10.0)
+project(Bell)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_FLAGS -Ofast)
+add_library(${PROJECT_NAME} SHARED /Users/JonasFuellemann/Offline_Dokumente/GitHub/RNBO-FMOD-Compiler/Builds/MacOSX/build/Release/RNBO-Fmod-Compiler.app/Contents/Resources/RNBOWrapper/RNBOWrapper.hpp /Users/JonasFuellemann/Offline_Dokumente/GitHub/RNBO-FMOD-Compiler/Builds/MacOSX/build/Release/RNBO-Fmod-Compiler.app/Contents/Resources/RNBOWrapper/RNBOWrapper.cpp /Users/JonasFuellemann/Offline_Dokumente/GitHub/RNBO-FMOD-Compiler/Builds/MacOSX/build/Release/RNBO-Fmod-Compiler.app/Contents/Resources/RNBOWrapper/RNBO_FMOD.cpp /Users/JonasFuellemann/Library/CloudStorage/Dropbox/Programming/RNBOFMODCompiler/SineBells/rnbo_source.cpp /Users/JonasFuellemann/Library/CloudStorage/Dropbox/Programming/RNBOFMODCompiler/SineBells/rnbo/RNBO.h /Users/JonasFuellemann/Library/CloudStorage/Dropbox/Programming/RNBOFMODCompiler/SineBells/rnbo/RNBO.cpp )
+set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY /Users/JonasFuellemann/Library/CloudStorage/Dropbox/Programming/RNBOFMODCompiler/SineBells/Export)
+target_include_directories(${PROJECT_NAME} PRIVATE /Users/JonasFuellemann/Library/CloudStorage/Dropbox/Programming/RNBOFMODCompiler/SineBells/rnbo)
+target_include_directories(${PROJECT_NAME} PRIVATE /Users/JonasFuellemann/Library/CloudStorage/Dropbox/Programming/RNBOFMODCompiler/SineBells/rnbo/common)
+target_include_directories(${PROJECT_NAME} PRIVATE /Users/JonasFuellemann/Library/CloudStorage/Dropbox/Programming/FMOD_Plugins/2.01.07/core/inc)

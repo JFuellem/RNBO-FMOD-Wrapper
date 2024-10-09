@@ -2,11 +2,20 @@
   {
     "name": "untitled",
     "preset": {
-      "Name_TestMultiChannel": {
+      "Name_Bell": {
         "value": 0
       },
-      "volume": {
-        "value": 0.1
+      "__sps": {
+        "p_obj-5": [
+          {},
+          {},
+          {},
+          {},
+          {}
+        ]
+      },
+      "freq": {
+        "value": 440
       }
     }
   }

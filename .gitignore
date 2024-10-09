@@ -32,3 +32,5 @@
 *.app
 
 CMake/inc/
+CMake/Xcode
+
