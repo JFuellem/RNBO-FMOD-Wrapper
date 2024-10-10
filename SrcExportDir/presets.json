@@ -2,20 +2,8 @@
   {
     "name": "untitled",
     "preset": {
-      "Name_Bell": {
-        "value": 0
-      },
-      "__sps": {
-        "p_obj-5": [
-          {},
-          {},
-          {},
-          {},
-          {}
-        ]
-      },
-      "freq": {
-        "value": 440
+      "volume": {
+        "value": 0.1
       }
     }
   }
