@@ -20,7 +20,6 @@ file(GLOB RNBOSRC_FILES
     "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.h"
     "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.cpp"
 )
-file(GLOB GENERATED_FILES "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/*")
 
 file(READ ${PARENT_DIR}/SrcExportDir/description.json JSON_DESCRIPTION)
 string(STRIP "${JSON_DESCRIPTION}" JSON_DESCRIPTION)
@@ -45,6 +44,9 @@ else()
 endif()
 
 configure_file(../RNBOWrapper/RNBO_FMOD.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp)
+
+file(GLOB GENERATED_FILES "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/*")
+#set(GENERATED_FILES ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp)
 
 project(${PLUGIN_NAME})
 
