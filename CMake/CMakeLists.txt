@@ -46,11 +46,25 @@ endif()
 configure_file(../RNBOWrapper/RNBO_FMOD.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp)
 
 file(GLOB GENERATED_FILES "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/*")
-#set(GENERATED_FILES ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp)
+
+
+
 
 project(${PLUGIN_NAME})
 
-add_library(${PROJECT_NAME} SHARED ${RNBOSRC_FILES} ${WRAPPER_FILES} ${GENERATED_FILES})
+#make library for potential multiple targets
+add_library(oLib OBJECT ${RNBOSRC_FILES} ${WRAPPER_FILES} ${GENERATED_FILES})
+
+add_library(${PROJECT_NAME} SHARED $<TARGET_OBJECTS:oLib>)
+
+if(APPLE)
+	add_library(${PROJECT_NAME}_bundle MODULE $<TARGET_OBJECTS:oLib>)
+	set_target_properties(${PROJECT_NAME}_bundle PROPERTIES
+		BUNDLE TRUE
+		OUTPUT_NAME "${PROJECT_NAME}"
+		LIBRARY_OUTPUT_DIRECTORY "../BuildProducts"
+	)
+endif()
 
 if(APPLE OR UNIX)
  set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ../BuildProducts)
@@ -58,12 +72,12 @@ else()
  set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ../BuildProducts)
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE ./inc)
-target_include_directories(${PROJECT_NAME} PRIVATE ../SrcExportDir/rnbo)
-target_include_directories(${PROJECT_NAME} PRIVATE ../SrcExportDir/rnbo/common)
-target_include_directories(${PROJECT_NAME} PRIVATE ../SrcExportDir)
-target_include_directories(${PROJECT_NAME} PRIVATE ../RNBOWrapper)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_BINARY_DIR}/RNBOWrapper/generated)
+target_include_directories(oLib PRIVATE ./inc)
+target_include_directories(oLib PRIVATE ../SrcExportDir/rnbo)
+target_include_directories(oLib PRIVATE ../SrcExportDir/rnbo/common)
+target_include_directories(oLib PRIVATE ../SrcExportDir)
+target_include_directories(oLib PRIVATE ../RNBOWrapper)
+target_include_directories(oLib PRIVATE ${CMAKE_BINARY_DIR}/RNBOWrapper/generated)
 
 
 
