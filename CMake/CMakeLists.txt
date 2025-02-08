@@ -37,7 +37,7 @@ endif()
 
 if("${CMAKE_MATCH_1}" STREQUAL "")
     set(PLUGIN_NAME "Untitled")
-    message(STATUS "No name found Name found, defaulting to: ${PLUGIN_NAME}")
+    message(STATUS "No name found, defaulting to: ${PLUGIN_NAME}")
 else()
     set(PLUGIN_NAME "${CMAKE_MATCH_1}")
     message(STATUS "Name found: ${CMAKE_MATCH_1}")

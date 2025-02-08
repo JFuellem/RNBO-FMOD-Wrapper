@@ -34,3 +34,8 @@
 CMake/inc/
 CMake/Xcode
 
+BuildProducts/*
+SrcExportDir/*
+
+
+SrcExportDir/
