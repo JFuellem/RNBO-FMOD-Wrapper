@@ -106,7 +106,7 @@ F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL FMODGetDSPDescription()
         else
         {
             RNBO::ParameterInfo info;
-            obj.getParameterInfo(finalParameters, &info);
+            obj.getParameterInfo(i, &info);
             FMOD_RNBO_dspparam[finalParameters] = &rnboParameters[finalParameters];
             FMOD_DSP_INIT_PARAMDESC_FLOAT(rnboParameters[finalParameters], name, info.unit, "The RNBO param:" , info.min, info.max , info.initialValue);
             finalParameters++;
