@@ -36,6 +36,5 @@ CMake/Xcode
 
 BuildProducts/*
 SrcExportDir/*
+!SrcExportDir/.gitkeep
 
-
-SrcExportDir/
