@@ -38,3 +38,5 @@ BuildProducts/*
 SrcExportDir/*
 !SrcExportDir/.gitkeep
 
+
+.DS_Store

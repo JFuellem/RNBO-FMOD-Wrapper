@@ -9,7 +9,9 @@
 
 #include <string.h>
 
-
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
 
 #include "RNBOWrapper.hpp"
 
@@ -18,7 +20,14 @@ using namespace RNBOFMODHelpers;
 #define MAX_RNBO_PARAMETERS 1000
 
 extern "C" {
+#ifdef EMSCRIPTEN
+    EMSCRIPTEN_KEEPALIVE
+    // For WebGL builds, prefix with plugin name to avoid conflicts
+    F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL @PLUGIN_NAME@_GetDSPDescription();
+#else
+    // For other platforms, keep original name
     F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL FMODGetDSPDescription();
+#endif
 }
 
 FMOD_RESULT F_CALLBACK FMOD_RNBO_dspcreate (FMOD_DSP_STATE *dsp_state);
@@ -80,9 +89,14 @@ FMOD_DSP_DESCRIPTION FMOD_RNBO_Desc =
 
 
 
-extern "C"
-{
-F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL FMODGetDSPDescription()
+extern "C" {
+#ifdef EMSCRIPTEN
+    // For WebGL builds, prefix with plugin name to avoid conflicts
+    F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL @PLUGIN_NAME@_GetDSPDescription()
+#else
+    // For other platforms, keep original name
+    F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL FMODGetDSPDescription()
+#endif
 {
     RNBO::CoreObject obj;
     int n = (int)(obj.getNumParameters());
