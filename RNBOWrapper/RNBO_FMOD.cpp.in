@@ -30,21 +30,21 @@ extern "C" {
 #endif
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspcreate (FMOD_DSP_STATE *dsp_state);
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dsprelease (FMOD_DSP_STATE *dsp_state);
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspreset (FMOD_DSP_STATE *dsp_state);
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspprocess (FMOD_DSP_STATE *dsp_state, unsigned int length, const FMOD_DSP_BUFFER_ARRAY *inbufferarray, FMOD_DSP_BUFFER_ARRAY *outbufferarray, FMOD_BOOL inputsidle, FMOD_DSP_PROCESS_OPERATION op);
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspsetparamfloat (FMOD_DSP_STATE *dsp_state, int index, float value);
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspgetparamfloat (FMOD_DSP_STATE *dsp_state, int index, float *value, char *valuestr);
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspsetparamdata(FMOD_DSP_STATE *dsp_state, int index, void *data, unsigned int /*length*/);
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspgetparamdata(FMOD_DSP_STATE * /*dsp_state*/, int index, void ** /*value*/, unsigned int * /*length*/, char * /*valuestr*/);
-FMOD_RESULT F_CALLBACK FMOD_RNBO_sys_register (FMOD_DSP_STATE *dsp_state);
-FMOD_RESULT F_CALLBACK FMOD_RNBO_sys_deregister (FMOD_DSP_STATE *dsp_state);
-FMOD_RESULT F_CALLBACK FMOD_RNBO_sys_mix (FMOD_DSP_STATE *dsp_state, int stage);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspcreate (FMOD_DSP_STATE *dsp_state);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dsprelease (FMOD_DSP_STATE *dsp_state);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspreset (FMOD_DSP_STATE *dsp_state);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspprocess (FMOD_DSP_STATE *dsp_state, unsigned int length, const FMOD_DSP_BUFFER_ARRAY *inbufferarray, FMOD_DSP_BUFFER_ARRAY *outbufferarray, FMOD_BOOL inputsidle, FMOD_DSP_PROCESS_OPERATION op);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamfloat (FMOD_DSP_STATE *dsp_state, int index, float value);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspgetparamfloat (FMOD_DSP_STATE *dsp_state, int index, float *value, char *valuestr);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *dsp_state, int index, void *data, unsigned int /*length*/);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspgetparamdata(FMOD_DSP_STATE * /*dsp_state*/, int index, void ** /*value*/, unsigned int * /*length*/, char * /*valuestr*/);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_sys_register (FMOD_DSP_STATE *dsp_state);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_sys_deregister (FMOD_DSP_STATE *dsp_state);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_sys_mix (FMOD_DSP_STATE *dsp_state, int stage);
 
-static FMOD_DSP_PARAMETER_DESC rnboParameters[MAX_RNBO_PARAMETERS];
-static bool FMOD_RNBO_Running = false;
-struct UserDataStruct
+static FMOD_DSP_PARAMETER_DESC FMOD_RNBO_@PLUGIN_NAME@_Parameters[MAX_RNBO_PARAMETERS];
+static bool FMOD_RNBO_@PLUGIN_NAME@_Running = false;
+struct FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct
 {
     size_t attributesIndex;
     float tailLength;
@@ -53,41 +53,38 @@ struct UserDataStruct
     bool multiChannelExtendable;
     size_t indexMap[MAX_RNBO_PARAMETERS];
 };
-static UserDataStruct userData;
-FMOD_DSP_PARAMETER_DESC *FMOD_RNBO_dspparam[MAX_RNBO_PARAMETERS] = {};
+static FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct FMOD_RNBO_@PLUGIN_NAME@_UserData;
+FMOD_DSP_PARAMETER_DESC *FMOD_RNBO_@PLUGIN_NAME@_DSPParam[MAX_RNBO_PARAMETERS] = {};
 
-
-FMOD_DSP_DESCRIPTION FMOD_RNBO_Desc =
+FMOD_DSP_DESCRIPTION FMOD_RNBO_@PLUGIN_NAME@_Desc =
 {
     FMOD_PLUGIN_SDK_VERSION,
     "@PLUGIN_NAME@", //name
     0x00010000, //plugin version
     0, //inbuffer
     0, //outbuffer
-    FMOD_RNBO_dspcreate,
-    FMOD_RNBO_dsprelease,
-    FMOD_RNBO_dspreset,
+    FMOD_RNBO_@PLUGIN_NAME@_dspcreate,
+    FMOD_RNBO_@PLUGIN_NAME@_dsprelease,
+    FMOD_RNBO_@PLUGIN_NAME@_dspreset,
     0,
-    FMOD_RNBO_dspprocess,
+    FMOD_RNBO_@PLUGIN_NAME@_dspprocess,
     0,
     MAX_RNBO_PARAMETERS,
-    FMOD_RNBO_dspparam,
-    FMOD_RNBO_dspsetparamfloat, //setfloat
+    FMOD_RNBO_@PLUGIN_NAME@_DSPParam,
+    FMOD_RNBO_@PLUGIN_NAME@_dspsetparamfloat, //setfloat
     0, //setint
     0, //setbool
-    FMOD_RNBO_dspsetparamdata, //setdata
-    FMOD_RNBO_dspgetparamfloat, //getfloat
+    FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata, //setdata
+    FMOD_RNBO_@PLUGIN_NAME@_dspgetparamfloat, //getfloat
     0, //getint
     0, //getbool
-    FMOD_RNBO_dspgetparamdata, //getdata
+    FMOD_RNBO_@PLUGIN_NAME@_dspgetparamdata, //getdata
     0,
     0, //userdata
-    FMOD_RNBO_sys_register,
-    FMOD_RNBO_sys_deregister,
-    FMOD_RNBO_sys_mix
+    FMOD_RNBO_@PLUGIN_NAME@_sys_register,
+    FMOD_RNBO_@PLUGIN_NAME@_sys_deregister,
+    FMOD_RNBO_@PLUGIN_NAME@_sys_mix
 };
-
-
 
 extern "C" {
 #ifdef EMSCRIPTEN
@@ -112,54 +109,54 @@ extern "C" {
         const char *name = obj.getParameterName(i);
         if(std::char_traits<char>::compare(name, "Name", 4) == 0)
         {
-            strcpy(FMOD_RNBO_Desc.name, &name[5]);
+            strcpy(FMOD_RNBO_@PLUGIN_NAME@_Desc.name, &name[5]);
         }
         else if (std::char_traits<char>::compare(name, "Sys_tail", 8) == 0)
         {
-            userData.tailLength = obj.getParameterValue(i);
+            FMOD_RNBO_@PLUGIN_NAME@_UserData.tailLength = obj.getParameterValue(i);
         }
         else
         {
             RNBO::ParameterInfo info;
             obj.getParameterInfo(i, &info);
-            FMOD_RNBO_dspparam[finalParameters] = &rnboParameters[finalParameters];
-            userData.indexMap[finalParameters] = i;
-            FMOD_DSP_INIT_PARAMDESC_FLOAT(rnboParameters[finalParameters], name, info.unit, "The RNBO param:" , info.min, info.max , info.initialValue);
+            FMOD_RNBO_@PLUGIN_NAME@_DSPParam[finalParameters] = &FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters];
+            FMOD_RNBO_@PLUGIN_NAME@_UserData.indexMap[finalParameters] = i;
+            FMOD_DSP_INIT_PARAMDESC_FLOAT(FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters], name, info.unit, "The RNBO param:" , info.min, info.max , info.initialValue);
             finalParameters++;
         }
     }
     
     if(CheckAnyRNBOSystemTag(obj))
     {
-        FMOD_RNBO_dspparam[finalParameters] = &rnboParameters[finalParameters];
-        FMOD_DSP_INIT_PARAMDESC_DATA(rnboParameters[finalParameters],"3D Attributes","","", FMOD_DSP_PARAMETER_DATA_TYPE_3DATTRIBUTES);
+        FMOD_RNBO_@PLUGIN_NAME@_DSPParam[finalParameters] = &FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters];
+        FMOD_DSP_INIT_PARAMDESC_DATA(FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters],"3D Attributes","","", FMOD_DSP_PARAMETER_DATA_TYPE_3DATTRIBUTES);
         
-        userData.attributesIndex = finalParameters;
+        FMOD_RNBO_@PLUGIN_NAME@_UserData.attributesIndex = finalParameters;
         
         finalParameters++;
     }
     
-    userData.isInstrument = true;
+    FMOD_RNBO_@PLUGIN_NAME@_UserData.isInstrument = true;
     
     if(obj.getNumInputChannels() > 0)
     {
-        FMOD_RNBO_Desc.numinputbuffers = 1;
-        userData.isInstrument = false;
-        userData.multiChannelExtendable = obj.getNumInputChannels() == 1 && obj.getNumOutputChannels() == 1;
+        FMOD_RNBO_@PLUGIN_NAME@_Desc.numinputbuffers = 1;
+        FMOD_RNBO_@PLUGIN_NAME@_UserData.isInstrument = false;
+        FMOD_RNBO_@PLUGIN_NAME@_UserData.multiChannelExtendable = obj.getNumInputChannels() == 1 && obj.getNumOutputChannels() == 1;
     }
     
     if(obj.getNumOutputChannels() > 0)
-        FMOD_RNBO_Desc.numoutputbuffers = 1;
+        FMOD_RNBO_@PLUGIN_NAME@_Desc.numoutputbuffers = 1;
     
-    FMOD_RNBO_Desc.userdata = &userData;
-    FMOD_RNBO_Desc.numparameters = finalParameters;
+    FMOD_RNBO_@PLUGIN_NAME@_Desc.userdata = &FMOD_RNBO_@PLUGIN_NAME@_UserData;
+    FMOD_RNBO_@PLUGIN_NAME@_Desc.numparameters = finalParameters;
     
-    return &FMOD_RNBO_Desc;
+    return &FMOD_RNBO_@PLUGIN_NAME@_Desc;
 }
 
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspcreate(FMOD_DSP_STATE *dsp_state)
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspcreate(FMOD_DSP_STATE *dsp_state)
 {
     dsp_state->plugindata = (RNBOWrapper *)FMOD_DSP_ALLOC(dsp_state, sizeof(RNBOWrapper));
     if (!dsp_state->plugindata)
@@ -169,9 +166,9 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_dspcreate(FMOD_DSP_STATE *dsp_state)
     RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
     void* rawData;
     FMOD_DSP_GETUSERDATA(dsp_state, &rawData);
-    state->tailLength = ((UserDataStruct*)rawData)->tailLength;
-    state->isInstrument = ((UserDataStruct*)rawData)->isInstrument;
-    state->multiChannelExpandable = ((UserDataStruct*)rawData)->multiChannelExtendable;
+    state->tailLength = ((FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct*)rawData)->tailLength;
+    state->isInstrument = ((FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct*)rawData)->isInstrument;
+    state->multiChannelExpandable = ((FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct*)rawData)->multiChannelExtendable;
     FMOD_DSP_GETSAMPLERATE(dsp_state, &state->sampleRate);
     
     //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Create","Taillength: %d", state->tailLength);
@@ -183,7 +180,7 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_dspcreate(FMOD_DSP_STATE *dsp_state)
     return FMOD_OK;
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dsprelease(FMOD_DSP_STATE *dsp_state)
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dsprelease(FMOD_DSP_STATE *dsp_state)
 {
     RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
     FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Release","%x", state);
@@ -191,7 +188,7 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_dsprelease(FMOD_DSP_STATE *dsp_state)
     return FMOD_OK;
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspprocess(FMOD_DSP_STATE *dsp_state, unsigned int length, const FMOD_DSP_BUFFER_ARRAY *inbufferarray, FMOD_DSP_BUFFER_ARRAY *outbufferarray, FMOD_BOOL inputsidle, FMOD_DSP_PROCESS_OPERATION op)
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspprocess(FMOD_DSP_STATE *dsp_state, unsigned int length, const FMOD_DSP_BUFFER_ARRAY *inbufferarray, FMOD_DSP_BUFFER_ARRAY *outbufferarray, FMOD_BOOL inputsidle, FMOD_DSP_PROCESS_OPERATION op)
 {
     RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
     
@@ -318,20 +315,20 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_dspprocess(FMOD_DSP_STATE *dsp_state, unsigned 
 }
 
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspreset(FMOD_DSP_STATE *dsp_state)
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspreset(FMOD_DSP_STATE *dsp_state)
 {
     
     return FMOD_OK;
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspsetparamfloat(FMOD_DSP_STATE *dsp_state, int index, float value)
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamfloat(FMOD_DSP_STATE *dsp_state, int index, float value)
 {
     
     RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
     
     void* userDataPtr;
     FMOD_DSP_GETUSERDATA(dsp_state, &userDataPtr);
-    UserDataStruct *userData = static_cast<UserDataStruct*>(userDataPtr);
+    FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct *userData = static_cast<FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct*>(userDataPtr);
     
     if(index < state->rnboObj[0]->getNumParameters())
     {
@@ -346,13 +343,13 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_dspsetparamfloat(FMOD_DSP_STATE *dsp_state, int
     return FMOD_ERR_INVALID_PARAM;
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspgetparamfloat(FMOD_DSP_STATE *dsp_state, int index, float *value, char *valuestr)
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspgetparamfloat(FMOD_DSP_STATE *dsp_state, int index, float *value, char *valuestr)
 {
     RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
     
     void* userDataPtr;
     FMOD_DSP_GETUSERDATA(dsp_state, &userDataPtr);
-    UserDataStruct *userData = static_cast<UserDataStruct*>(userDataPtr);
+    FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct *userData = static_cast<FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct*>(userDataPtr);
     
     if(index < state->rnboObj[0]->getNumParameters())
     {
@@ -363,12 +360,12 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_dspgetparamfloat(FMOD_DSP_STATE *dsp_state, int
     return FMOD_ERR_INVALID_PARAM;
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspsetparamdata(FMOD_DSP_STATE *dsp_state, int index, void *data, unsigned int /*length*/)
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *dsp_state, int index, void *data, unsigned int /*length*/)
 {
     RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
     void* userDataPtr;
     FMOD_DSP_GETUSERDATA(dsp_state, &userDataPtr);
-    UserDataStruct *userData = static_cast<UserDataStruct*>(userDataPtr);
+    FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct *userData = static_cast<FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct*>(userDataPtr);
 
     if(index == userData->attributesIndex)
     {
@@ -383,28 +380,33 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_dspsetparamdata(FMOD_DSP_STATE *dsp_state, int 
     return FMOD_ERR_INVALID_PARAM;
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_dspgetparamdata(FMOD_DSP_STATE *dsp_state, int index, void ** /*value*/, unsigned int * /*length*/, char * /*valuestr*/)
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspgetparamdata(FMOD_DSP_STATE *dsp_state, int index, void ** /*value*/, unsigned int * /*length*/, char * /*valuestr*/)
 {
     //unused
 
     return FMOD_ERR_INVALID_PARAM;
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_sys_register(FMOD_DSP_STATE * /*state*/)
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_sys_register(FMOD_DSP_STATE * /*state*/)
 {
-    FMOD_RNBO_Running = true;
+    FMOD_RNBO_@PLUGIN_NAME@_Running = true;
     
     return FMOD_OK;
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_sys_deregister(FMOD_DSP_STATE * /*state*/)
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_sys_deregister(FMOD_DSP_STATE *state)
 {
-    FMOD_RNBO_Running = false;
+    FMOD_RNBO_@PLUGIN_NAME@_Running = false;
+    
+    if (state && state->plugindata) {
+        RNBOWrapper *wrapper = (RNBOWrapper *)state->plugindata;
+        wrapper->Reset();
+    }
     
     return FMOD_OK;
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_sys_mix(FMOD_DSP_STATE * /*state*/, int /*stage*/)
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_sys_mix(FMOD_DSP_STATE * /*state*/, int /*stage*/)
 {
     return FMOD_OK;
 }
