@@ -19,8 +19,10 @@ using namespace RNBOFMODHelpers;
 
 #define MAX_RNBO_PARAMETERS 1000
 
+extern "C" RNBO::PatcherFactoryFunctionPtr @PLUGIN_NAME@FactoryFunction(RNBO::PlatformInterface* platformInterface);
+
 extern "C" {
-#ifdef EMSCRIPTEN
+#if defined(__EMSCRIPTEN__)
     EMSCRIPTEN_KEEPALIVE
     // For WebGL builds, prefix with plugin name to avoid conflicts
     F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL @PLUGIN_NAME@_GetDSPDescription();
@@ -95,7 +97,9 @@ extern "C" {
     F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL FMODGetDSPDescription()
 #endif
 {
-    RNBO::CoreObject obj;
+    auto patcherInterface = @PLUGIN_NAME@FactoryFunction(RNBO::Platform::get())();
+    RNBO::CoreObject obj((RNBO::UniquePtr<RNBO::PatcherInterface>(patcherInterface)));
+    
     int n = (int)(obj.getNumParameters());
     int finalParameters = 0;
     RNBO::ParameterIndex i = 0;
@@ -164,6 +168,12 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspcreate(FMOD_DSP_STATE *dsp_sta
         return FMOD_ERR_MEMORY;
     }
     RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
+    
+    // Get the factory function and create the core object
+    auto patcherInterface = @PLUGIN_NAME@FactoryFunction(RNBO::Platform::get())();
+    state->rnboObj.push_back(std::make_unique<RNBO::CoreObject>(
+        RNBO::UniquePtr<RNBO::PatcherInterface>(patcherInterface)));
+    
     void* rawData;
     FMOD_DSP_GETUSERDATA(dsp_state, &rawData);
     state->tailLength = ((FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct*)rawData)->tailLength;

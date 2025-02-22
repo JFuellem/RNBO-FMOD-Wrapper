@@ -7,12 +7,16 @@
 
 #include "RNBOWrapper.hpp"
 
+extern "C" RNBO::PatcherFactoryFunctionPtr @PLUGIN_NAME@FactoryFunction(RNBO::PlatformInterface* platformInterface);
+
 void RNBOWrapper::Init()
 {
     size_t c(0);
     do
     {
-        rnboObj.push_back(std::make_unique<RNBO::CoreObject>());
+        auto patcherInterface = @PLUGIN_NAME@FactoryFunction(RNBO::Platform::get())();
+        rnboObj.push_back(std::make_unique<RNBO::CoreObject>(
+            RNBO::UniquePtr<RNBO::PatcherInterface>(patcherInterface)));
         c++;
     } while (multiChannelExpandable && c<MAX_CHANS);
 }

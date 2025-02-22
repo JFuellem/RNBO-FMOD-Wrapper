@@ -31,43 +31,50 @@ file(GLOB RNBOSRC_FILES
 # Determine plugin name
 file(READ ${PARENT_DIR}/SrcExportDir/description.json JSON_DESCRIPTION)
 string(STRIP "${JSON_DESCRIPTION}" JSON_DESCRIPTION)
-string(REGEX MATCH "\"meta\" *: *\\{[^\\}]*\"name\" *: *\"([^\"]*)\"" MATCHES "${JSON_DESCRIPTION}")
 
-if("${CMAKE_MATCH_1}" STREQUAL "untitled")
-    message(STATUS "Standard Rnbo name detected: ${CMAKE_MATCH_1}, searching further...")
-    string(REGEX MATCH "\"meta\" *: *\\{[^\\}]*\"rnboobjname\" *: *\"([^\"]*)\"" MATCHES "${JSON_DESCRIPTION}")
-endif()
-
-if("${CMAKE_MATCH_1}" STREQUAL "rnbomatic")
-    message(STATUS "Standard Rnbo object name detected: ${CMAKE_MATCH_1}, searching further...")
-    string(REGEX MATCH "\"Name_([^\"]+)\"" MATCHES "${JSON_DESCRIPTION}")
-endif()
-
-if("${CMAKE_MATCH_1}" STREQUAL "")
-    set(PLUGIN_NAME "Untitled")
-    message(STATUS "No name found, defaulting to: ${PLUGIN_NAME}")
-else()
+# First try to get rnboobjname directly
+string(REGEX MATCH "\"rnboobjname\" *: *\"([^\"]*)\"" RNBO_OBJ_MATCH "${JSON_DESCRIPTION}")
+if(CMAKE_MATCH_1)
     set(PLUGIN_NAME "${CMAKE_MATCH_1}")
-    message(STATUS "Name found: ${CMAKE_MATCH_1}")
+    message(STATUS "Found rnboobjname: ${PLUGIN_NAME}")
+else()
+    # Fall back to existing name detection logic
+    string(REGEX MATCH "\"meta\" *: *\\{[^\\}]*\"name\" *: *\"([^\"]*)\"" MATCHES "${JSON_DESCRIPTION}")
+
+    if("${CMAKE_MATCH_1}" STREQUAL "untitled")
+        message(STATUS "Standard Rnbo name detected: ${CMAKE_MATCH_1}, searching further...")
+        string(REGEX MATCH "\"meta\" *: *\\{[^\\}]*\"rnboobjname\" *: *\"([^\"]*)\"" MATCHES "${JSON_DESCRIPTION}")
+    endif()
+
+    if("${CMAKE_MATCH_1}" STREQUAL "rnbomatic")
+        message(STATUS "Standard Rnbo object name detected: ${CMAKE_MATCH_1}, searching further...")
+        string(REGEX MATCH "\"Name_([^\"]+)\"" MATCHES "${JSON_DESCRIPTION}")
+    endif()
+
+    if("${CMAKE_MATCH_1}" STREQUAL "")
+        set(PLUGIN_NAME "Untitled")
+        message(STATUS "No name found, defaulting to: ${PLUGIN_NAME}")
+    else()
+        set(PLUGIN_NAME "${CMAKE_MATCH_1}")
+        message(STATUS "Name found: ${CMAKE_MATCH_1}")
+    endif()
 endif()
 
-# Now that we have the plugin name, configure the template
+# Template files
 configure_file(../RNBOWrapper/RNBO_FMOD.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp)
+configure_file(../RNBOWrapper/RNBOWrapper.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBOWrapper.cpp)
 
 file(GLOB GENERATED_FILES "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/*")
 
 # Set project name after determining plugin name
 project(${PLUGIN_NAME})
 
-# Now we can set up Emscripten-specific flags that depend on PLUGIN_NAME
+# Emscripten-specific flags
 if(EMSCRIPTEN)
     # Export flags using the determined plugin name
     set(EXPORTED_FUNCTION_NAME "${PLUGIN_NAME}_GetDSPDescription")
     set(EXPORTED_FUNCTIONS_LIST "['_${EXPORTED_FUNCTION_NAME}']")
     
-    # Add WebAssembly features to match Unity's requirements
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mnontrapping-fptoint -mmutable-globals -mbulk-memory")
-    set(EM_LINK_FLAGS "-s WASM=1 -s EXPORTED_FUNCTIONS=\"${EXPORTED_FUNCTIONS_LIST}\"")
 endif()
 
 # Library setup
@@ -81,7 +88,7 @@ if(EMSCRIPTEN)
         LINK_FLAGS "${EM_LINK_FLAGS}"
     )
 else()
-    # For other platforms, create shared libraries as before
+    # For other platforms, create shared libraries
     add_library(${PROJECT_NAME} SHARED $<TARGET_OBJECTS:oLib>)
     
     if(APPLE)
@@ -107,6 +114,9 @@ target_include_directories(oLib PRIVATE ../SrcExportDir/rnbo/common)
 target_include_directories(oLib PRIVATE ../SrcExportDir)
 target_include_directories(oLib PRIVATE ../RNBOWrapper)
 target_include_directories(oLib PRIVATE ${CMAKE_BINARY_DIR}/RNBOWrapper/generated)
+
+
+target_compile_definitions(oLib PRIVATE RNBO_NO_PATCHERFACTORY)
 
 
 
