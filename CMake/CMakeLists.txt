@@ -12,21 +12,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS -O3)
 
-# Basic Emscripten setup
-if(EMSCRIPTEN)
-    set(CMAKE_STATIC_LIBRARY_SUFFIX ".a")
-    add_definitions(-DEMSCRIPTEN)
-endif()
-
 # Get parent directory and files
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 
+
 file(GLOB WRAPPER_FILES "${PARENT_DIR}/RNBOWrapper/*")
-file(GLOB RNBOSRC_FILES
-    "${PARENT_DIR}/SrcExportDir/*.cpp"
-    "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.h"
-    "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.cpp"
-)
+file(GLOB RNBO_COMMON_FILES "${PARENT_DIR}/SrcExportDir/rnbo/common/*")
 
 # Determine plugin name
 file(READ ${PARENT_DIR}/SrcExportDir/description.json JSON_DESCRIPTION)
@@ -60,32 +51,56 @@ else()
     endif()
 endif()
 
+# Set project name after determining plugin name
+project(${PLUGIN_NAME})
+message(STATUS "Detected CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+
+# For Emscripten builds, create separate base library
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    message(STATUS "Configuring rnbo_base target")
+    # Create base RNBO library
+    add_library(rnbo_base STATIC
+        "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.cpp"
+        "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.h"
+    )
+    
+    # Setup include directories for base library
+    target_include_directories(rnbo_base PRIVATE
+        ${PARENT_DIR}/SrcExportDir
+        ${PARENT_DIR}/SrcExportDir/rnbo
+        ${PARENT_DIR}/SrcExportDir/rnbo/common
+    )
+    
+    set_target_properties(rnbo_base PROPERTIES 
+        ARCHIVE_OUTPUT_DIRECTORY "../BuildProducts"
+    )
+    
+    # Plugin-specific files (excluding RNBO.cpp)
+    file(GLOB RNBOSRC_FILES
+        "${PARENT_DIR}/SrcExportDir/*.cpp"
+    )
+else()
+    file(GLOB RNBOSRC_FILES
+        "${PARENT_DIR}/SrcExportDir/*.cpp"
+        "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.h"
+        "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.cpp"
+    )
+endif()
+
 # Template files
 configure_file(../RNBOWrapper/RNBO_FMOD.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp)
 configure_file(../RNBOWrapper/RNBOWrapper.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBOWrapper.cpp)
 
 file(GLOB GENERATED_FILES "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/*")
 
-# Set project name after determining plugin name
-project(${PLUGIN_NAME})
-
-# Emscripten-specific flags
-if(EMSCRIPTEN)
-    # Export flags using the determined plugin name
-    set(EXPORTED_FUNCTION_NAME "${PLUGIN_NAME}_GetDSPDescription")
-    set(EXPORTED_FUNCTIONS_LIST "['_${EXPORTED_FUNCTION_NAME}']")
-    
-endif()
-
 # Library setup
 add_library(oLib OBJECT ${RNBOSRC_FILES} ${WRAPPER_FILES} ${GENERATED_FILES})
 set_target_properties(oLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-if(EMSCRIPTEN)
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     add_library(${PROJECT_NAME} STATIC $<TARGET_OBJECTS:oLib>)
     set_target_properties(${PROJECT_NAME} PROPERTIES 
         ARCHIVE_OUTPUT_DIRECTORY "../BuildProducts"
-        LINK_FLAGS "${EM_LINK_FLAGS}"
     )
 else()
     # For other platforms, create shared libraries
@@ -114,7 +129,6 @@ target_include_directories(oLib PRIVATE ../SrcExportDir/rnbo/common)
 target_include_directories(oLib PRIVATE ../SrcExportDir)
 target_include_directories(oLib PRIVATE ../RNBOWrapper)
 target_include_directories(oLib PRIVATE ${CMAKE_BINARY_DIR}/RNBOWrapper/generated)
-
 
 target_compile_definitions(oLib PRIVATE RNBO_NO_PATCHERFACTORY)
 
