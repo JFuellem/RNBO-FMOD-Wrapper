@@ -113,7 +113,8 @@ extern "C" {
         const char *name = obj.getParameterName(i);
         if(std::char_traits<char>::compare(name, "Name", 4) == 0)
         {
-            strcpy(FMOD_RNBO_@PLUGIN_NAME@_Desc.name, &name[5]);
+            //Deprecated, still skip name param in case there are still patchers that contain it
+            //strcpy(FMOD_RNBO_@PLUGIN_NAME@_Desc.name, &name[5]);
         }
         else if (std::char_traits<char>::compare(name, "Sys_tail", 8) == 0)
         {

@@ -22,28 +22,12 @@ string(STRIP "${JSON_DESCRIPTION}" JSON_DESCRIPTION)
 # First try to get rnboobjname directly
 string(REGEX MATCH "\"rnboobjname\" *: *\"([^\"]*)\"" RNBO_OBJ_MATCH "${JSON_DESCRIPTION}")
 if(CMAKE_MATCH_1)
-    set(PLUGIN_NAME "${CMAKE_MATCH_1}")
-    message(STATUS "Found rnboobjname: ${PLUGIN_NAME}")
-else()
-    # Fall back to existing name detection logic
-    string(REGEX MATCH "\"meta\" *: *\\{[^\\}]*\"name\" *: *\"([^\"]*)\"" MATCHES "${JSON_DESCRIPTION}")
-
-    if("${CMAKE_MATCH_1}" STREQUAL "untitled")
-        message(STATUS "Standard Rnbo name detected: ${CMAKE_MATCH_1}, searching further...")
-        string(REGEX MATCH "\"meta\" *: *\\{[^\\}]*\"rnboobjname\" *: *\"([^\"]*)\"" MATCHES "${JSON_DESCRIPTION}")
-    endif()
-
     if("${CMAKE_MATCH_1}" STREQUAL "rnbomatic")
-        message(STATUS "Standard Rnbo object name detected: ${CMAKE_MATCH_1}, searching further...")
-        string(REGEX MATCH "\"Name_([^\"]+)\"" MATCHES "${JSON_DESCRIPTION}")
-    endif()
-
-    if("${CMAKE_MATCH_1}" STREQUAL "")
-        set(PLUGIN_NAME "Untitled")
-        message(STATUS "No name found, defaulting to: ${PLUGIN_NAME}")
+        set(PLUGIN_NAME "PLS_SET_CODEGEN_CLASS_ON_RNBO_EXPORT")
+        message(WARNING "Default rnboobjname 'rnbomatic' detected. Please set a custom class name when exporting from RNBO.")
     else()
         set(PLUGIN_NAME "${CMAKE_MATCH_1}")
-        message(STATUS "Name found: ${CMAKE_MATCH_1}")
+        message(STATUS "Found rnboobjname: ${PLUGIN_NAME}")
     endif()
 endif()
 
@@ -98,6 +82,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     set_target_properties(${PROJECT_NAME} PROPERTIES 
         ARCHIVE_OUTPUT_DIRECTORY "../BuildProducts"
     )
+    target_compile_definitions(rnbo_base PRIVATE RNBO_NO_PATCHERFACTORY)
 else()
     # For other platforms, create shared libraries
     add_library(${PROJECT_NAME} SHARED $<TARGET_OBJECTS:oLib>)
@@ -127,7 +112,6 @@ target_include_directories(oLib PRIVATE ../RNBOWrapper)
 target_include_directories(oLib PRIVATE ${CMAKE_BINARY_DIR}/RNBOWrapper/generated)
 
 target_compile_definitions(oLib PRIVATE RNBO_NO_PATCHERFACTORY)
-
 
 
 
