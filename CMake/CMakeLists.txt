@@ -15,10 +15,6 @@ set(CMAKE_CXX_FLAGS -O3)
 # Get parent directory and files
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 
-
-file(GLOB WRAPPER_FILES "${PARENT_DIR}/RNBOWrapper/*")
-file(GLOB RNBO_COMMON_FILES "${PARENT_DIR}/SrcExportDir/rnbo/common/*")
-
 # Determine plugin name
 file(READ ${PARENT_DIR}/SrcExportDir/description.json JSON_DESCRIPTION)
 string(STRIP "${JSON_DESCRIPTION}" JSON_DESCRIPTION)

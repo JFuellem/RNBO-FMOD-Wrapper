@@ -28,33 +28,16 @@ public:
     size_t tailLength = 0;
     int sampleRate = 48000;
     
-    bool multiChannelExpandable;
-    float* deInterleaveBuffer;
-    float* interleaveBuffer;
+    bool multiChannelExpandable = false;
+    float* deInterleaveBuffer = nullptr;
+    float* interleaveBuffer = nullptr;
     size_t lastChannelCount = -1;
     
-    RNBOWrapper() : 
-        deInterleaveBuffer(nullptr),
-        interleaveBuffer(nullptr),
-        lastChannelCount(-1),
-        isInstrument(1),
-        inputsIdle(0),
-        lastIdleState(0),
-        shouldGoIdle(false),
-        timeStore(0),
-        tailLength(0),
-        sampleRate(48000),
-        multiChannelExpandable(false)
-    {}
 
     void Init();
     void Reset();
 
-    ~RNBOWrapper() {
-        if(deInterleaveBuffer) delete[] deInterleaveBuffer;
-        if(interleaveBuffer) delete[] interleaveBuffer;
-        rnboObj.clear();
-    }
+
 };
 
 namespace RNBOFMODHelpers {
