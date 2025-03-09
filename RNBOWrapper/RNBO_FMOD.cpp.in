@@ -97,8 +97,8 @@ extern "C" {
     F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL FMODGetDSPDescription()
 #endif
 {
-    auto patcherInterface = @PLUGIN_NAME@FactoryFunction(RNBO::Platform::get())();
-    RNBO::CoreObject obj((RNBO::UniquePtr<RNBO::PatcherInterface>(patcherInterface)));
+    RNBO::UniquePtr<RNBO::PatcherInterface> patcherInterfacePtr(@PLUGIN_NAME@FactoryFunction(RNBO::Platform::get())());
+    RNBO::CoreObject obj(std::move(patcherInterfacePtr));
     
     int n = (int)(obj.getNumParameters());
     int finalParameters = 0;
@@ -195,6 +195,11 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dsprelease(FMOD_DSP_STATE *dsp_st
 {
     RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
     FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Release","%x", state);
+    
+    if (state) {
+        state->Reset();
+    }
+    
     FMOD_DSP_FREE(dsp_state, state);
     return FMOD_OK;
 }

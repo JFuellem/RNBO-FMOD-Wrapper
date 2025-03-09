@@ -33,9 +33,14 @@ public:
     float* interleaveBuffer = nullptr;
     size_t lastChannelCount = -1;
     
+    // Destructor to ensure proper cleanup
+    ~RNBOWrapper() {
+        CleanupBuffers();
+    }
 
     void Init();
     void Reset();
+    void CleanupBuffers();
 
 
 };

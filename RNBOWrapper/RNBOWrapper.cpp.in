@@ -21,10 +21,29 @@ void RNBOWrapper::Init()
     } while (multiChannelExpandable && c<MAX_CHANS);
 }
 
+void RNBOWrapper::CleanupBuffers()
+{
+    if (deInterleaveBuffer) {
+        delete[] deInterleaveBuffer;
+        deInterleaveBuffer = nullptr;
+    }
+    
+    if (interleaveBuffer) {
+        delete[] interleaveBuffer;
+        interleaveBuffer = nullptr;
+    }
+}
+
 void RNBOWrapper::Reset()
 {
     shouldGoIdle = false;
     inputsIdle = 0;
+    
+    rnboObj.clear();
+    
+    CleanupBuffers();
+    
+    lastChannelCount = -1;
 }
 
 namespace RNBOFMODHelpers
