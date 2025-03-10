@@ -8,6 +8,8 @@
 #ifndef RNBOWrapper_hpp
 #define RNBOWrapper_hpp
 
+#define RNBO_SIMPLEENGINE
+
 #include <stdio.h>
 #include <vector>
 

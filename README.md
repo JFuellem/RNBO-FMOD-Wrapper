@@ -4,11 +4,10 @@ This is an FMOD Wrapper for RNBO, which simplifies the creation of plugins for F
 
 ## RNBO Design instructions
 
-1. Name your Plugin by either naming it the rnbo object in the inspector or adding a |param| object with argument ```Name_<PluginName>```. The naming has following priority object name > Classname (export) > Name_ parameter.
-2. Create an RNBO patch as you like either as an instrument or effect. The presence of in~ and out~ objects determines the type.
+1. Create an RNBO patch as you like either as an instrument or effect. The presence of in~ and out~ objects determines the type.
 **2a. Featuring Multichannel-Expansion:** All effects with one in~ and one out~ channel are expanded to the channel configuration inside the middleware.
-3. Add |param| objects that you need. min, max, value and unit attributes will automatically be transferred.
-4. Optionally add any or multiple of the following |inports| that will receive 3d-Attributes from the source as a list:
+2. Add |param| objects that you need. min, max, value and unit attributes will automatically be transferred.
+3. Optionally add any or multiple of the following |inports| that will receive 3d-Attributes from the source as a list:
 
   | Argument | Explanation             |
   |----------|-------------------------|
@@ -23,14 +22,16 @@ This is an FMOD Wrapper for RNBO, which simplifies the creation of plugins for F
 
   If the plugin is added to an event as an effect, it automatically turns into a 3D event (even without a spatialiser). For instrument plugins, you must add a spatialiser to preview the effect in FMDO Studio.
   
-5. Export it as a C++ Source Code by choosing the RNBOExportDir as Output Directory. If you haven't specified a name, you can set one here as Classname. No other modifications are needed.
+4. Go to the Export as a C++ Source Code and set a classname, which determines the plugins name. Clone the repo and choose SrcExportDir as output directory. No other modifications are needed.
 
 ## Build Instructions
 
-1. Clone Repo and Download FMOD-API. Copy the FMOD api/core/inc folder into the CMake folder.
-2. cd to the CMake folder ```cd /path/to/CMake```
-3. ```cmake -B <SomeFolder> -DPLUGIN_NAME=<PluginName>```
-4. ```cmake --build <SomeFolder>```
+1. Clone Repo if not already done.
+2. Firelight technologies doesn't want the redistribution of their headers, so please download the FMOD Engine API and copy the FMOD api/core/inc folder into the CMake folder so that the structure is repo/CMake/inc. 
+3. cd to the CMake folder ```cd /path/to/CMake```
+4. ```cmake -B Build```
+5. ```cmake --build Build```
+6. Find your plugins in the BuildProducts folder.
 
 
 ## Things to consider
