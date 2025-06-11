@@ -38,7 +38,7 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspreset (FMOD_DSP_STATE *dsp_sta
 FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspprocess (FMOD_DSP_STATE *dsp_state, unsigned int length, const FMOD_DSP_BUFFER_ARRAY *inbufferarray, FMOD_DSP_BUFFER_ARRAY *outbufferarray, FMOD_BOOL inputsidle, FMOD_DSP_PROCESS_OPERATION op);
 FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamfloat (FMOD_DSP_STATE *dsp_state, int index, float value);
 FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspgetparamfloat (FMOD_DSP_STATE *dsp_state, int index, float *value, char *valuestr);
-FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *dsp_state, int index, void *data, unsigned int /*length*/);
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *dsp_state, int index, void *data, unsigned int length);
 FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspgetparamdata(FMOD_DSP_STATE * /*dsp_state*/, int index, void ** /*value*/, unsigned int * /*length*/, char * /*valuestr*/);
 FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_sys_register (FMOD_DSP_STATE *dsp_state);
 FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_sys_deregister (FMOD_DSP_STATE *dsp_state);
@@ -54,6 +54,7 @@ struct FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct
     uint32_t attributeBitmap;
     bool multiChannelExtendable;
     size_t indexMap[MAX_RNBO_PARAMETERS];
+    std::vector<size_t> dataRefIndices;
 };
 static FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct FMOD_RNBO_@PLUGIN_NAME@_UserData;
 FMOD_DSP_PARAMETER_DESC *FMOD_RNBO_@PLUGIN_NAME@_DSPParam[MAX_RNBO_PARAMETERS] = {};
@@ -127,6 +128,21 @@ extern "C" {
             FMOD_RNBO_@PLUGIN_NAME@_DSPParam[finalParameters] = &FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters];
             FMOD_RNBO_@PLUGIN_NAME@_UserData.indexMap[finalParameters] = i;
             FMOD_DSP_INIT_PARAMDESC_FLOAT(FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters], name, info.unit, "The RNBO param:" , info.min, info.max , info.initialValue);
+            finalParameters++;
+        }
+    }
+
+    if(obj.getNumExternalDataRefs() > 0)
+    {
+        size_t nDataRefs = obj.getNumExternalDataRefs();
+        for(size_t i = 0; i < nDataRefs; i++)
+        {
+            FMOD_RNBO_@PLUGIN_NAME@_DSPParam[finalParameters] = &FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters];
+            const char* dataRefId = obj.getExternalDataId(static_cast<int>(i));
+            FMOD_DSP_INIT_PARAMDESC_DATA(FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters],dataRefId,"","", FMOD_DSP_PARAMETER_DATA_TYPE_USER);
+            
+            FMOD_RNBO_@PLUGIN_NAME@_UserData.dataRefIndices.push_back(finalParameters);
+            
             finalParameters++;
         }
     }
@@ -376,7 +392,11 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspgetparamfloat(FMOD_DSP_STATE *
     return FMOD_ERR_INVALID_PARAM;
 }
 
-FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *dsp_state, int index, void *data, unsigned int /*length*/)
+static void freeDecodedAudioData(RNBO::ExternalDataId id, char *data) {
+    delete[] reinterpret_cast<float*>(data);
+}
+
+FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *dsp_state, int index, void *data, unsigned int length)
 {
     RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
     void* userDataPtr;
@@ -392,6 +412,34 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *d
             DispatchRNBOMessages(state->rnboObj[0].get(), data);
         return FMOD_OK;
     }
+    
+    else if(std::binary_search(userData->dataRefIndices.begin(), userData->dataRefIndices.end(), index))
+    {
+        char* decodedData = nullptr;
+        size_t decodedLengthInBytes = 0;
+        unsigned int channels = 0;
+        unsigned int sampleRate = 0;
+        if (state->DecodeAudio(data, length, decodedData, decodedLengthInBytes, channels, sampleRate))
+        {
+            auto it = std::find(userData->dataRefIndices.begin(), userData->dataRefIndices.end(), index);
+            if (it != userData->dataRefIndices.end()) {
+                size_t dataRefIndex = std::distance(userData->dataRefIndices.begin(), it);
+                if(dataRefIndex < state->rnboObj[0]->getNumExternalDataRefs())
+                {
+                    const char* dataRefId = state->rnboObj[0]->getExternalDataId(static_cast<int>(dataRefIndex));
+                    RNBO::Float32AudioBuffer bufferType(channels, sampleRate);
+                    
+                    if (state->multiChannelExpandable)
+                        for(size_t i(0);i<(state->lastChannelCount == 0 ? MAX_CHANS : state->lastChannelCount);i++)
+                            state->rnboObj[i]->setExternalData(dataRefId, decodedData, decodedLengthInBytes, bufferType, &freeDecodedAudioData);
+                    else
+                        state->rnboObj[0]->setExternalData(dataRefId, decodedData, decodedLengthInBytes, bufferType, &freeDecodedAudioData);
+                }
+            }
+        }
+        return FMOD_OK;
+    }
+    
 
     return FMOD_ERR_INVALID_PARAM;
 }

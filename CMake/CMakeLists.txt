@@ -73,6 +73,8 @@ configure_file(../RNBOWrapper/RNBOWrapper.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper
 
 file(GLOB GENERATED_FILES "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/*")
 
+file(GLOB WRAPPER_FILES "../RNBOWrapper/RNBOWrapper.hpp")
+
 # Library setup
 add_library(oLib OBJECT ${RNBOSRC_FILES} ${WRAPPER_FILES} ${GENERATED_FILES})
 set_target_properties(oLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -109,6 +111,7 @@ target_include_directories(oLib PRIVATE ../SrcExportDir/rnbo)
 target_include_directories(oLib PRIVATE ../SrcExportDir/rnbo/common)
 target_include_directories(oLib PRIVATE ../SrcExportDir)
 target_include_directories(oLib PRIVATE ../RNBOWrapper)
+target_include_directories(oLib PRIVATE ../decoder)
 target_include_directories(oLib PRIVATE ${CMAKE_BINARY_DIR}/RNBOWrapper/generated)
 
 target_compile_definitions(oLib PRIVATE RNBO_NO_PATCHERFACTORY)

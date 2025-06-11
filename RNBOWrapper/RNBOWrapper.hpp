@@ -15,6 +15,8 @@
 
 #include "RNBO.h"
 #include "fmod.hpp"
+#include "dr_wav.h"
+#include "dr_mp3.h"
 
 #define MAX_CHANS 12
 
@@ -43,6 +45,7 @@ public:
     void Init();
     void Reset();
     void CleanupBuffers();
+    bool DecodeAudio(const void* data, size_t dataLength, char*& decodedData, size_t& decodedLengthInBytes, unsigned int& channels, unsigned int& sampleRate);
 
 
 };
