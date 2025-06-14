@@ -12,14 +12,12 @@
 
 #include "RNBOWrapper.hpp"
 
-extern "C" RNBO::PatcherFactoryFunctionPtr @PLUGIN_NAME@FactoryFunction(RNBO::PlatformInterface* platformInterface);
-
-void RNBOWrapper::Init()
+void RNBOWrapper::Init(RNBO::PatcherFactoryFunctionPtr (*factoryProvider)(RNBO::PlatformInterface*))
 {
     size_t c(0);
     do
     {
-        auto patcherInterface = @PLUGIN_NAME@FactoryFunction(RNBO::Platform::get())();
+        auto patcherInterface = factoryProvider(RNBO::Platform::get())();
         rnboObj.push_back(std::make_unique<RNBO::CoreObject>(
             RNBO::UniquePtr<RNBO::PatcherInterface>(patcherInterface)));
         c++;

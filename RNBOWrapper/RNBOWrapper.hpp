@@ -42,7 +42,7 @@ public:
         CleanupBuffers();
     }
 
-    void Init();
+    void Init(RNBO::PatcherFactoryFunctionPtr (*factoryProvider)(RNBO::PlatformInterface*));
     void Reset();
     void CleanupBuffers();
     bool DecodeAudio(const void* data, size_t dataLength, char*& decodedData, size_t& decodedLengthInBytes, unsigned int& channels, unsigned int& sampleRate);

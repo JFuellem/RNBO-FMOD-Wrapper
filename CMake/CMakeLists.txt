@@ -2,7 +2,10 @@
 
 cmake_minimum_required(VERSION 3.10.0)
 
-# Basic compiler settings
+#--------------------------------------------------------------------------------
+# Basic Compiler and Project Setup
+#--------------------------------------------------------------------------------
+
 if(APPLE)
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
 endif()
@@ -12,14 +15,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS -O3)
 
-# Get parent directory and files
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 
-# Determine plugin name
+# Determine plugin name from description.json
 file(READ ${PARENT_DIR}/SrcExportDir/description.json JSON_DESCRIPTION)
 string(STRIP "${JSON_DESCRIPTION}" JSON_DESCRIPTION)
-
-# First try to get rnboobjname directly
 string(REGEX MATCH "\"rnboobjname\" *: *\"([^\"]*)\"" RNBO_OBJ_MATCH "${JSON_DESCRIPTION}")
 if(CMAKE_MATCH_1)
     if("${CMAKE_MATCH_1}" STREQUAL "rnbomatic")
@@ -27,68 +27,79 @@ if(CMAKE_MATCH_1)
         message(WARNING "Default rnboobjname 'rnbomatic' detected. Please set a custom class name when exporting from RNBO.")
     else()
         set(PLUGIN_NAME "${CMAKE_MATCH_1}")
-        message(STATUS "Found rnboobjname: ${PLUGIN_NAME}")
     endif()
 endif()
 
-# Set project name after determining plugin name
 project(${PLUGIN_NAME})
-message(STATUS "Detected CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+message(STATUS "Building Project: ${PROJECT_NAME} for System: ${CMAKE_SYSTEM_NAME}")
 
-# For Emscripten builds, create separate base library
+#--------------------------------------------------------------------------------
+# Source File Collections
+#--------------------------------------------------------------------------------
+
+# Generated file from the FMOD wrapper template
+configure_file(../RNBOWrapper/RNBO_FMOD.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp)
+file(GLOB GENERATED_FILES "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/*")
+
+# All other source files
+file(GLOB RNBOSRC_FILES "${PARENT_DIR}/SrcExportDir/*.cpp")
+file(GLOB WRAPPER_HPP_FILES "../RNBOWrapper/RNBOWrapper.hpp") # For Xcode project
+
+# Create a library of object files containing the plugin-specific sources.
+# This doesn't produce a final library file, just a collection of .o files
+# that we can use to build our final static or shared libraries later.
+add_library(oLib OBJECT
+    ${RNBOSRC_FILES}
+    ${GENERATED_FILES}
+)
+
+# For Xcode, add header files to the project for easy editing.
+if(CMAKE_GENERATOR STREQUAL "Xcode")
+    target_sources(oLib PRIVATE ${WRAPPER_HPP_FILES})
+endif()
+
+#--------------------------------------------------------------------------------
+# Platform-Specific Library Configuration
+#--------------------------------------------------------------------------------
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
-    message(STATUS "Configuring rnbo_base target")
-    # Create base RNBO library
+    # --- EMSCRIPTEN BUILD ---
+    # For Emscripten, we build all common code into a single static library
+    # called "rnbo_base" to avoid duplicate symbols when linking multiple plugins.
+    message(STATUS "Configuring for Emscripten build")
+
     add_library(rnbo_base STATIC
         "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.cpp"
-        "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.h"
+        "${PARENT_DIR}/RNBOWrapper/RNBOWrapper.cpp"
     )
-    
-    # Setup include directories for base library
+    set_target_properties(rnbo_base PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "../BuildProducts")
+
+    # The base library needs all the include paths
     target_include_directories(rnbo_base PRIVATE
+        ./inc
         ${PARENT_DIR}/SrcExportDir
         ${PARENT_DIR}/SrcExportDir/rnbo
         ${PARENT_DIR}/SrcExportDir/rnbo/common
+        ${PARENT_DIR}/RNBOWrapper
+        ${PARENT_DIR}/decoder
     )
-    
-    set_target_properties(rnbo_base PROPERTIES 
-        ARCHIVE_OUTPUT_DIRECTORY "../BuildProducts"
-    )
-    
-    # Plugin-specific files (excluding RNBO.cpp)
-    file(GLOB RNBOSRC_FILES
-        "${PARENT_DIR}/SrcExportDir/*.cpp"
-    )
-else()
-    file(GLOB RNBOSRC_FILES
-        "${PARENT_DIR}/SrcExportDir/*.cpp"
-        "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.h"
-        "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.cpp"
-    )
-endif()
 
-# Template files
-configure_file(../RNBOWrapper/RNBO_FMOD.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp)
-configure_file(../RNBOWrapper/RNBOWrapper.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBOWrapper.cpp)
-
-file(GLOB GENERATED_FILES "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/*")
-
-file(GLOB WRAPPER_FILES "../RNBOWrapper/RNBOWrapper.hpp")
-
-# Library setup
-add_library(oLib OBJECT ${RNBOSRC_FILES} ${WRAPPER_FILES} ${GENERATED_FILES})
-set_target_properties(oLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    # Create the final plugin-specific static library from our object files.
     add_library(${PROJECT_NAME} STATIC $<TARGET_OBJECTS:oLib>)
-    set_target_properties(${PROJECT_NAME} PROPERTIES 
-        ARCHIVE_OUTPUT_DIRECTORY "../BuildProducts"
-    )
-    target_compile_definitions(rnbo_base PRIVATE RNBO_NO_PATCHERFACTORY)
+    set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "../BuildProducts")
+
 else()
-    # For other platforms, create shared libraries
+    # --- ALL OTHER BUILDS (macOS, Windows, Linux, etc.) ---
+    # For other platforms, we compile all sources directly into the object library.
+    message(STATUS "Configuring for non-Emscripten build")
+    target_sources(oLib PRIVATE
+        "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.cpp"
+        "${PARENT_DIR}/RNBOWrapper/RNBOWrapper.cpp"
+    )
+
+    # Create the final shared library for the plugin.
     add_library(${PROJECT_NAME} SHARED $<TARGET_OBJECTS:oLib>)
-    
+
     if(APPLE)
         add_library(${PROJECT_NAME}_bundle MODULE $<TARGET_OBJECTS:oLib>)
         set_target_properties(${PROJECT_NAME}_bundle PROPERTIES
@@ -105,16 +116,22 @@ else()
     endif()
 endif()
 
-# Include directories
-target_include_directories(oLib PRIVATE ./inc)
-target_include_directories(oLib PRIVATE ../SrcExportDir/rnbo)
-target_include_directories(oLib PRIVATE ../SrcExportDir/rnbo/common)
-target_include_directories(oLib PRIVATE ../SrcExportDir)
-target_include_directories(oLib PRIVATE ../RNBOWrapper)
-target_include_directories(oLib PRIVATE ../decoder)
-target_include_directories(oLib PRIVATE ${CMAKE_BINARY_DIR}/RNBOWrapper/generated)
+#--------------------------------------------------------------------------------
+# Common Include Directories for oLib
+# (Needed by all platforms to compile the plugin-specific sources)
+#--------------------------------------------------------------------------------
+target_include_directories(oLib PRIVATE
+    ./inc
+    ../SrcExportDir/rnbo
+    ../SrcExportDir/rnbo/common
+    ../SrcExportDir
+    ../RNBOWrapper
+    ../decoder
+    ${CMAKE_BINARY_DIR}/RNBOWrapper/generated
+)
 
 target_compile_definitions(oLib PRIVATE RNBO_NO_PATCHERFACTORY)
+set_target_properties(oLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 
 

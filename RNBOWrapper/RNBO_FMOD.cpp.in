@@ -186,11 +186,6 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspcreate(FMOD_DSP_STATE *dsp_sta
     }
     RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
     
-    // Get the factory function and create the core object
-    auto patcherInterface = @PLUGIN_NAME@FactoryFunction(RNBO::Platform::get())();
-    state->rnboObj.push_back(std::make_unique<RNBO::CoreObject>(
-        RNBO::UniquePtr<RNBO::PatcherInterface>(patcherInterface)));
-    
     void* rawData;
     FMOD_DSP_GETUSERDATA(dsp_state, &rawData);
     state->tailLength = ((FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct*)rawData)->tailLength;
@@ -202,7 +197,7 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspcreate(FMOD_DSP_STATE *dsp_sta
     //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Create","Is istrument: %d", state->isInstrument);
     //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Create","Multichannelthing: %d", state->multiChannelExpandable);
     
-    state->Init();
+    state->Init(@PLUGIN_NAME@FactoryFunction);
     
     return FMOD_OK;
 }
