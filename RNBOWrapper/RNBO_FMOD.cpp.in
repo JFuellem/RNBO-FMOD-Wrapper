@@ -128,6 +128,8 @@ extern "C" {
             FMOD_RNBO_@PLUGIN_NAME@_DSPParam[finalParameters] = &FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters];
             FMOD_RNBO_@PLUGIN_NAME@_UserData.indexMap[finalParameters] = i;
             FMOD_DSP_INIT_PARAMDESC_FLOAT(FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters], name, info.unit, "The RNBO param:" , info.min, info.max , info.initialValue);
+            // Override the mapping type to LINEAR instead of AUTO -> optimally this should be settable by the user later...
+            FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters].floatdesc.mapping.type = FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_LINEAR;
             finalParameters++;
         }
     }
