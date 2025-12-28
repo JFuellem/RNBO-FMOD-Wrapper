@@ -43,6 +43,15 @@ file(GLOB GENERATED_FILES "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/*")
 
 # All other source files
 file(GLOB RNBOSRC_FILES "${PARENT_DIR}/SrcExportDir/*.cpp")
+
+# --- Memory Leak Fix Integration ---
+option(APPLY_LEAKFIX "Apply memory leak fixes to generated source code (requires Python)" ON)
+if(APPLY_LEAKFIX)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/LeakFixer.cmake)
+    rnbo_apply_leak_fix_to_list("${RNBOSRC_FILES}")
+endif()
+# -----------------------------------
+
 file(GLOB WRAPPER_HPP_FILES "../RNBOWrapper/RNBOWrapper.hpp") # For Xcode project
 
 # Create a library of object files containing the plugin-specific sources.
