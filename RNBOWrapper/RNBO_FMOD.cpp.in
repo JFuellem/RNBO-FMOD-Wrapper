@@ -98,6 +98,7 @@ extern "C" {
     F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL FMODGetDSPDescription()
 #endif
 {
+    FMOD_RNBO_@PLUGIN_NAME@_UserData.dataRefIndices.clear();
     RNBO::UniquePtr<RNBO::PatcherInterface> patcherInterfacePtr(@PLUGIN_NAME@FactoryFunction(RNBO::Platform::get())());
     RNBO::CoreObject obj(std::move(patcherInterfacePtr));
     
@@ -186,7 +187,8 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspcreate(FMOD_DSP_STATE *dsp_sta
     {
         return FMOD_ERR_MEMORY;
     }
-    RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
+    
+    RNBOWrapper *state = new (dsp_state->plugindata) RNBOWrapper();
     
     void* rawData;
     FMOD_DSP_GETUSERDATA(dsp_state, &rawData);
@@ -211,6 +213,7 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dsprelease(FMOD_DSP_STATE *dsp_st
     
     if (state) {
         state->Reset();
+        state->~RNBOWrapper();
     }
     
     FMOD_DSP_FREE(dsp_state, state);
@@ -238,8 +241,9 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspprocess(FMOD_DSP_STATE *dsp_st
         if(state->multiChannelExpandable)
         {
             auto chans = inbufferarray->buffernumchannels[0];
+            size_t processChans = std::min((size_t)chans, state->rnboObj.size());
             
-            for(size_t i(0);i<chans;i++)
+            for(size_t i(0);i<processChans;i++)
             {
                 while (!state->rnboObj[i]->prepareToProcess(state->sampleRate,4096)) {}
             }
@@ -286,6 +290,7 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspprocess(FMOD_DSP_STATE *dsp_st
     if(state->multiChannelExpandable)
     {
         auto chans = inbufferarray->buffernumchannels[0];
+        size_t processChans = std::min((size_t)chans, state->rnboObj.size());
         
         //de-interleave
         for(size_t i(0);i<length;i++)
@@ -297,9 +302,16 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspprocess(FMOD_DSP_STATE *dsp_st
         }
         
         //process
-        for(size_t i(0);i<chans;i++)
+        for(size_t i(0);i<processChans;i++)
         {
             state->rnboObj[i]->process<float*>(&state->deInterleaveBuffer[i*length], 1, &state->interleaveBuffer[i*length], 1, length);
+        }
+        
+        // Clear remaining channels in interleave buffer if any (silence)
+        if (processChans < chans) {
+            size_t processedSamples = processChans * length;
+            size_t totalSamples = chans * length;
+            memset(state->interleaveBuffer + processedSamples, 0, (totalSamples - processedSamples) * sizeof(float));
         }
         
         //interleave
@@ -361,9 +373,11 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamfloat(FMOD_DSP_STATE *
     
     if(index < state->rnboObj[0]->getNumParameters())
     {
-        if (state->multiChannelExpandable)
-            for(size_t i(0);i<(state->lastChannelCount == 0 ? MAX_CHANS : state->lastChannelCount);i++)
+        if (state->multiChannelExpandable) {
+            for(size_t i(0); i < state->rnboObj.size(); i++) {
                 state->rnboObj[i]->setParameterValue(userData->indexMap[index], value);
+            }
+        }
         else
             state->rnboObj[0]->setParameterValue(userData->indexMap[index], value);
         return FMOD_OK;
@@ -389,10 +403,6 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspgetparamfloat(FMOD_DSP_STATE *
     return FMOD_ERR_INVALID_PARAM;
 }
 
-static void freeDecodedAudioData(RNBO::ExternalDataId id, char *data) {
-    delete[] reinterpret_cast<float*>(data);
-}
-
 FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *dsp_state, int index, void *data, unsigned int length)
 {
     RNBOWrapper *state = (RNBOWrapper *)dsp_state->plugindata;
@@ -402,9 +412,11 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *d
 
     if(index == userData->attributesIndex)
     {
-        if (state->multiChannelExpandable)
-            for(size_t i(0);i<(state->lastChannelCount == 0 ? MAX_CHANS : state->lastChannelCount);i++)
+        if (state->multiChannelExpandable) {
+            for(size_t i(0); i < state->rnboObj.size(); i++) {
                 DispatchRNBOMessages(state->rnboObj[i].get(), data);
+            }
+        }
         else
             DispatchRNBOMessages(state->rnboObj[0].get(), data);
         return FMOD_OK;
@@ -418,20 +430,19 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *d
         unsigned int sampleRate = 0;
         if (state->DecodeAudio(data, length, decodedData, decodedLengthInBytes, channels, sampleRate))
         {
+            bool mapped = false;
             auto it = std::find(userData->dataRefIndices.begin(), userData->dataRefIndices.end(), index);
             if (it != userData->dataRefIndices.end()) {
                 size_t dataRefIndex = std::distance(userData->dataRefIndices.begin(), it);
                 if(dataRefIndex < state->rnboObj[0]->getNumExternalDataRefs())
                 {
-                    const char* dataRefId = state->rnboObj[0]->getExternalDataId(static_cast<int>(dataRefIndex));
-                    RNBO::Float32AudioBuffer bufferType(channels, sampleRate);
-                    
-                    if (state->multiChannelExpandable)
-                        for(size_t i(0);i<(state->lastChannelCount == 0 ? MAX_CHANS : state->lastChannelCount);i++)
-                            state->rnboObj[i]->setExternalData(dataRefId, decodedData, decodedLengthInBytes, bufferType, &freeDecodedAudioData);
-                    else
-                        state->rnboObj[0]->setExternalData(dataRefId, decodedData, decodedLengthInBytes, bufferType, &freeDecodedAudioData);
+                    state->SetExternalData(dataRefIndex, decodedData, decodedLengthInBytes, channels, sampleRate);
+                    mapped = true;
                 }
+            }
+            
+            if (!mapped) {
+                 delete[] reinterpret_cast<float*>(decodedData);
             }
         }
         return FMOD_OK;

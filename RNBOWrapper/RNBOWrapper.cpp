@@ -35,6 +35,11 @@ void RNBOWrapper::CleanupBuffers()
         delete[] interleaveBuffer;
         interleaveBuffer = nullptr;
     }
+
+    for (auto const& [index, buffer] : mDataRefBuffers) {
+        delete[] buffer;
+    }
+    mDataRefBuffers.clear();
 }
 
 void RNBOWrapper::Reset()
@@ -91,6 +96,30 @@ bool RNBOWrapper::DecodeAudio(const void* data, size_t dataLength, char*& decode
     }
 
     return false;
+}
+
+void RNBOWrapper::SetExternalData(size_t dataRefIndex, char* data, size_t sizeInBytes, unsigned int channels, unsigned int sampleRate)
+{
+    // Check if we have an existing buffer for this index and free it
+    if (mDataRefBuffers.count(dataRefIndex)) {
+        delete[] mDataRefBuffers[dataRefIndex];
+        mDataRefBuffers.erase(dataRefIndex);
+    }
+    
+    // Store the new buffer (cast to float* since we allocated it as such in DecodeAudio)
+    mDataRefBuffers[dataRefIndex] = reinterpret_cast<float*>(data);
+    
+    if (rnboObj.empty()) return;
+
+    // Get the ID from the first object
+    const char* dataRefId = rnboObj[0]->getExternalDataId(static_cast<int>(dataRefIndex));
+    RNBO::Float32AudioBuffer bufferType(channels, sampleRate);
+    
+    // Set for all objects
+    for(size_t i = 0; i < rnboObj.size(); i++) {
+        // Pass nullptr as freeCallback because we manage the memory in mDataRefBuffers
+        rnboObj[i]->setExternalData(dataRefId, data, sizeInBytes, bufferType, nullptr);
+    }
 }
 
 namespace RNBOFMODHelpers
