@@ -80,6 +80,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     add_library(rnbo_base STATIC
         "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.cpp"
         "${PARENT_DIR}/RNBOWrapper/RNBOWrapper.cpp"
+        "${PARENT_DIR}/RNBOWrapper/Resampler.cpp"
     )
     set_target_properties(rnbo_base PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "../BuildProducts")
 
@@ -104,6 +105,7 @@ else()
     target_sources(oLib PRIVATE
         "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.cpp"
         "${PARENT_DIR}/RNBOWrapper/RNBOWrapper.cpp"
+        "${PARENT_DIR}/RNBOWrapper/Resampler.cpp"
     )
 
     # Create the final shared library for the plugin.

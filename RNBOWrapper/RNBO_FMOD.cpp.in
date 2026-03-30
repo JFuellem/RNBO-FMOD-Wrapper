@@ -14,6 +14,7 @@
 #endif
 
 #include "RNBOWrapper.hpp"
+#include "Resampler.hpp"
 
 using namespace RNBOFMODHelpers;
 
@@ -430,6 +431,26 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *d
         unsigned int sampleRate = 0;
         if (state->DecodeAudio(data, length, decodedData, decodedLengthInBytes, channels, sampleRate))
         {
+            if (channels > 0 && sampleRate > 0 && state->sampleRate > 0 && sampleRate != static_cast<unsigned int>(state->sampleRate)) {
+                size_t inputFrames = decodedLengthInBytes / (sizeof(float) * channels);
+                size_t outputFrames = RNBOFMODResampler::ComputeOutputFrames(
+                    inputFrames, sampleRate, static_cast<unsigned int>(state->sampleRate));
+                if (outputFrames > 0) {
+                    float* resampled = new float[outputFrames * channels];
+                    if (RNBOFMODResampler::ResampleSinc(
+                            reinterpret_cast<float*>(decodedData), inputFrames, channels,
+                            sampleRate, static_cast<unsigned int>(state->sampleRate),
+                            resampled, outputFrames)) {
+                        delete[] reinterpret_cast<float*>(decodedData);
+                        decodedData = reinterpret_cast<char*>(resampled);
+                        decodedLengthInBytes = outputFrames * channels * sizeof(float);
+                        sampleRate = static_cast<unsigned int>(state->sampleRate);
+                    } else {
+                        delete[] resampled;
+                    }
+                }
+            }
+
             bool mapped = false;
             auto it = std::find(userData->dataRefIndices.begin(), userData->dataRefIndices.end(), index);
             if (it != userData->dataRefIndices.end()) {
