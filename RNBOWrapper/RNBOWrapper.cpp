@@ -12,12 +12,26 @@
 
 #include "RNBOWrapper.hpp"
 
-void RNBOWrapper::Init(RNBO::PatcherFactoryFunctionPtr (*factoryProvider)(RNBO::PlatformInterface*))
+#ifdef RNBO_LEGACY_PATCHER_FACTORY
+#include "src/RNBO_PlatformInterface.h"
+#endif
+
+void RNBOWrapper::Init(
+#ifdef RNBO_LEGACY_PATCHER_FACTORY
+    RNBO::PatcherFactoryFunctionPtr (*factoryProvider)(RNBO::PlatformInterface*)
+#else
+    RNBO::PatcherFactoryFunctionPtr (*factoryProvider)()
+#endif
+)
 {
     size_t c(0);
     do
     {
+#ifdef RNBO_LEGACY_PATCHER_FACTORY
         auto patcherInterface = factoryProvider(RNBO::Platform::get())();
+#else
+        auto patcherInterface = factoryProvider()();
+#endif
         rnboObj.push_back(std::make_unique<RNBO::CoreObject>(
             RNBO::UniquePtr<RNBO::PatcherInterface>(patcherInterface)));
         c++;

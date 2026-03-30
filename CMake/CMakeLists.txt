@@ -30,6 +30,42 @@ if(CMAKE_MATCH_1)
     endif()
 endif()
 
+# meta.rnboversion: used to pick patcher factory API. RNBO 1.4.0+ exports use
+# PatcherFactoryFunctionPtr NameFactoryFunction() / NameFactoryFunction()();
+# older exports used NameFactoryFunction(PlatformInterface*) / ...Platform::get()().
+# See https://cycling74.com/releases/rnbo/1.4.0 (C++ export / lifecycle fixes in 1.4.x).
+string(REGEX MATCH "\"rnboversion\" *: *\"([^\"]*)\"" _RNBO_VER_MATCH "${JSON_DESCRIPTION}")
+set(RNBO_EXPORT_VERSION "${CMAKE_MATCH_1}")
+if(NOT RNBO_EXPORT_VERSION)
+    set(RNBO_EXPORT_VERSION "1.4.0")
+    message(STATUS "description.json: rnboversion missing; assuming ${RNBO_EXPORT_VERSION} (modern patcher factory)")
+endif()
+message(STATUS "RNBO export meta.rnboversion: ${RNBO_EXPORT_VERSION}")
+
+set(_RNBO_LEGACY_FACTORY_DEFAULT OFF)
+if(RNBO_EXPORT_VERSION VERSION_LESS "1.4.0")
+    set(_RNBO_LEGACY_FACTORY_DEFAULT ON)
+endif()
+option(RNBO_LEGACY_PATCHER_FACTORY "Pre-1.4 RNBO export: PatcherFactory(PlatformInterface*) + Platform::get (requires matching old RNBO headers in SrcExportDir/rnbo)" ${_RNBO_LEGACY_FACTORY_DEFAULT})
+if(RNBO_LEGACY_PATCHER_FACTORY)
+    message(STATUS "Patcher factory mode: legacy (export < 1.4.0)")
+else()
+    message(STATUS "Patcher factory mode: modern (export >= 1.4.0)")
+endif()
+
+if(RNBO_LEGACY_PATCHER_FACTORY)
+    set(RNBO_FMOD_FACTORY_EXTERN "extern \"C\" RNBO::PatcherFactoryFunctionPtr ${PLUGIN_NAME}FactoryFunction(RNBO::PlatformInterface* platformInterface);")
+    set(RNBO_FMOD_FACTORY_GETDSP_ALLOC "    RNBO::UniquePtr<RNBO::PatcherInterface> patcherInterfacePtr(${PLUGIN_NAME}FactoryFunction(RNBO::Platform::get())());")
+else()
+    set(RNBO_FMOD_FACTORY_EXTERN "extern \"C\" RNBO::PatcherFactoryFunctionPtr ${PLUGIN_NAME}FactoryFunction();")
+    set(RNBO_FMOD_FACTORY_GETDSP_ALLOC "    RNBO::UniquePtr<RNBO::PatcherInterface> patcherInterfacePtr(${PLUGIN_NAME}FactoryFunction()());")
+endif()
+
+set(_RNBO_WRAPPER_DEFS RNBO_NO_PATCHERFACTORY)
+if(RNBO_LEGACY_PATCHER_FACTORY)
+    list(APPEND _RNBO_WRAPPER_DEFS RNBO_LEGACY_PATCHER_FACTORY=1)
+endif()
+
 project(${PLUGIN_NAME})
 message(STATUS "Building Project: ${PROJECT_NAME} for System: ${CMAKE_SYSTEM_NAME}")
 
@@ -37,7 +73,7 @@ message(STATUS "Building Project: ${PROJECT_NAME} for System: ${CMAKE_SYSTEM_NAM
 # Source File Collections
 #--------------------------------------------------------------------------------
 
-# Generated file from the FMOD wrapper template
+# Generated file from the FMOD wrapper template (placeholders set above)
 configure_file(../RNBOWrapper/RNBO_FMOD.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp)
 file(GLOB GENERATED_FILES "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/*")
 
@@ -82,6 +118,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
         "${PARENT_DIR}/RNBOWrapper/RNBOWrapper.cpp"
     )
     set_target_properties(rnbo_base PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "../BuildProducts")
+    target_compile_definitions(rnbo_base PRIVATE ${_RNBO_WRAPPER_DEFS})
 
     # The base library needs all the include paths
     target_include_directories(rnbo_base PRIVATE
@@ -139,7 +176,7 @@ target_include_directories(oLib PRIVATE
     ${CMAKE_BINARY_DIR}/RNBOWrapper/generated
 )
 
-target_compile_definitions(oLib PRIVATE RNBO_NO_PATCHERFACTORY)
+target_compile_definitions(oLib PRIVATE ${_RNBO_WRAPPER_DEFS})
 set_target_properties(oLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 

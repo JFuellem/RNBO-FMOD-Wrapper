@@ -22,7 +22,8 @@ def _find_closing_brace(content: str, start_index: int) -> int:
 def _apply_memory_leak_fix_to_content(content: str, file_path: str) -> str:
     """
     Parses C++ content to find RNBO patcher classes and injects memory freeing code
-    into their destructors.
+    into destructors that are empty (whitespace-only). Destructors with any existing
+    statements are left unchanged.
     """
     modified_content = content
     class_name_found = None
@@ -114,8 +115,13 @@ def _apply_memory_leak_fix_to_content(content: str, file_path: str) -> str:
             continue
 
         destructor_body_content = modified_content[destructor_body_start : destructor_body_end]
-        if "Platform::get()->free" in destructor_body_content or "freeView" in destructor_body_content:
-            print(f"Fix already present in ~{class_name}()")
+        # RNBO exports now ship with deallocateSignals() and similar in ~T(); only patch
+        # legacy empty destructors. Non-empty body is left unchanged (avoids duplicate
+        # teardown and bad Platform::get()->free on newer SDKs).
+        if destructor_body_content.strip():
+            print(
+                f"Skipping ~{class_name}(): destructor not empty ({os.path.basename(file_path)})"
+            )
             continue
 
         # Inject code before the final brace of the destructor

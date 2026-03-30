@@ -19,7 +19,7 @@ using namespace RNBOFMODHelpers;
 
 #define MAX_RNBO_PARAMETERS 1000
 
-extern "C" RNBO::PatcherFactoryFunctionPtr @PLUGIN_NAME@FactoryFunction(RNBO::PlatformInterface* platformInterface);
+@RNBO_FMOD_FACTORY_EXTERN@
 
 extern "C" {
 #if defined(__EMSCRIPTEN__)
@@ -99,7 +99,7 @@ extern "C" {
 #endif
 {
     FMOD_RNBO_@PLUGIN_NAME@_UserData.dataRefIndices.clear();
-    RNBO::UniquePtr<RNBO::PatcherInterface> patcherInterfacePtr(@PLUGIN_NAME@FactoryFunction(RNBO::Platform::get())());
+@RNBO_FMOD_FACTORY_GETDSP_ALLOC@
     RNBO::CoreObject obj(std::move(patcherInterfacePtr));
     
     int n = (int)(obj.getNumParameters());
