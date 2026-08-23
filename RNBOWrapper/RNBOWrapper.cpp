@@ -12,10 +12,6 @@
 
 #include "RNBOWrapper.hpp"
 
-#ifdef RNBO_LEGACY_PATCHER_FACTORY
-#include "src/RNBO_PlatformInterface.h"
-#endif
-
 void RNBOWrapper::Init(
 #ifdef RNBO_LEGACY_PATCHER_FACTORY
     RNBO::PatcherFactoryFunctionPtr (*factoryProvider)(RNBO::PlatformInterface*)
