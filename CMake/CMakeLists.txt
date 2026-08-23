@@ -192,6 +192,31 @@ target_include_directories(oLib PRIVATE
 target_compile_definitions(oLib PRIVATE ${_RNBO_WRAPPER_DEFS})
 set_target_properties(oLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-
-
-
+#--------------------------------------------------------------------------------
+# Unity static source (IL2CPP)
+# cmake --build Build --target unity_static_export
+#--------------------------------------------------------------------------------
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+    set(_UNITY_BUNDLE_DIR "${PARENT_DIR}/BuildProducts/${PROJECT_NAME}_unity_static")
+    set(_UNITY_EXPORT_CMD
+        ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/unity_static_export.py"
+            --out "${_UNITY_BUNDLE_DIR}"
+            --plugin-name "${PROJECT_NAME}"
+            --generated "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp"
+            --rnbo-src "${PARENT_DIR}/SrcExportDir"
+            --wrapper-dir "${PARENT_DIR}/RNBOWrapper"
+            --decoder-dir "${PARENT_DIR}/decoder"
+            --fmod-inc "${CMAKE_CURRENT_SOURCE_DIR}/inc"
+    )
+    if(RNBO_LEGACY_PATCHER_FACTORY)
+        list(APPEND _UNITY_EXPORT_CMD --legacy-factory)
+    endif()
+    add_custom_target(unity_static_export
+        COMMAND ${_UNITY_EXPORT_CMD}
+        COMMENT "Writing Unity static source bundle to ${_UNITY_BUNDLE_DIR}"
+        VERBATIM
+    )
+else()
+    message(STATUS "Python3 not found: unity_static_export target skipped")
+endif()

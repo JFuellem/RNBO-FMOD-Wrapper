@@ -24,10 +24,10 @@ using namespace RNBOFMODHelpers;
 extern "C" {
 #if defined(__EMSCRIPTEN__)
     EMSCRIPTEN_KEEPALIVE
-    // For WebGL builds, prefix with plugin name to avoid conflicts
+    F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL @PLUGIN_NAME@_GetDSPDescription();
+#elif defined(RNBO_STATIC_BUILD)
     F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL @PLUGIN_NAME@_GetDSPDescription();
 #else
-    // For other platforms, keep original name
     F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL FMODGetDSPDescription();
 #endif
 }
@@ -90,11 +90,9 @@ FMOD_DSP_DESCRIPTION FMOD_RNBO_@PLUGIN_NAME@_Desc =
 };
 
 extern "C" {
-#ifdef EMSCRIPTEN
-    // For WebGL builds, prefix with plugin name to avoid conflicts
+#if defined(__EMSCRIPTEN__) || defined(RNBO_STATIC_BUILD)
     F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL @PLUGIN_NAME@_GetDSPDescription()
 #else
-    // For other platforms, keep original name
     F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL FMODGetDSPDescription()
 #endif
 {

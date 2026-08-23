@@ -33,6 +33,21 @@ This is an FMOD Wrapper for RNBO, which simplifies the creation of plugins for F
 5. ```cmake --build Build```
 6. Find your plugins in the BuildProducts folder.
 
+## Unity static source (IL2CPP)
+
+Editor and desktop still use the dynamic plugin in `BuildProducts/`. IL2CPP players need this source bundle instead.
+
+```bash
+cd /path/to/CMake
+cmake -B Build
+cmake --build Build --target unity_static_export
+```
+
+Copy `BuildProducts/<PluginName>_unity_static/` anywhere under `Assets/` (e.g. `Assets/Plugins/RNBO_FMOD/<PluginName>/`). Not under `Assets/Plugins/FMOD/platforms/.../lib`.
+
+In FMOD Settings, add `<PluginName>_GetDSPDescription` to **Static Plugins**; keep the dynamic library on **Dynamic Plugins** for the Editor.
+
+Console builds still need that platform’s SDK and FMOD console package on the machine that builds the player.
 
 ## Things to consider
 Feel free to try out the additional GUI Compiler [here](https://github.com/JFuellem/RNBO-FMOD-Compiler).
