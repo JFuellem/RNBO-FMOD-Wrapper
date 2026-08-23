@@ -17,17 +17,30 @@ set(CMAKE_CXX_FLAGS -O3)
 
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 
-# Determine plugin name from description.json
+# -DPLUGIN_NAME from the pipeline is the signed dylib/bundle name. Keep it.
+# description.json rnboobjname is only the C++ factory prefix.
+if(PLUGIN_NAME)
+    set(_PIPELINE_PLUGIN_NAME "${PLUGIN_NAME}")
+endif()
+
 file(READ ${PARENT_DIR}/SrcExportDir/description.json JSON_DESCRIPTION)
 string(STRIP "${JSON_DESCRIPTION}" JSON_DESCRIPTION)
 string(REGEX MATCH "\"rnboobjname\" *: *\"([^\"]*)\"" RNBO_OBJ_MATCH "${JSON_DESCRIPTION}")
 if(CMAKE_MATCH_1)
-    if("${CMAKE_MATCH_1}" STREQUAL "rnbomatic")
-        set(PLUGIN_NAME "PLS_SET_CODEGEN_CLASS_IN_RNBO")
-        message(WARNING "Default rnboobjname 'rnbomatic' detected. Please set a custom class name when exporting from RNBO.")
-    else()
-        set(PLUGIN_NAME "${CMAKE_MATCH_1}")
-    endif()
+    set(RNBO_FACTORY_CLASS "${CMAKE_MATCH_1}")
+endif()
+
+if(_PIPELINE_PLUGIN_NAME)
+    set(PLUGIN_NAME "${_PIPELINE_PLUGIN_NAME}")
+elseif(RNBO_FACTORY_CLASS AND NOT RNBO_FACTORY_CLASS STREQUAL "rnbomatic")
+    set(PLUGIN_NAME "${RNBO_FACTORY_CLASS}")
+else()
+    set(PLUGIN_NAME "PlsSetCodeGen")
+    message(WARNING "Default rnboobjname 'rnbomatic' detected. Please set a custom class name when exporting from RNBO.")
+endif()
+
+if(NOT RNBO_FACTORY_CLASS)
+    set(RNBO_FACTORY_CLASS "${PLUGIN_NAME}")
 endif()
 
 # meta.rnboversion: used to pick patcher factory API. RNBO 1.4.0+ exports use
@@ -54,11 +67,11 @@ else()
 endif()
 
 if(RNBO_LEGACY_PATCHER_FACTORY)
-    set(RNBO_FMOD_FACTORY_EXTERN "extern \"C\" RNBO::PatcherFactoryFunctionPtr ${PLUGIN_NAME}FactoryFunction(RNBO::PlatformInterface* platformInterface);")
-    set(RNBO_FMOD_FACTORY_GETDSP_ALLOC "    RNBO::UniquePtr<RNBO::PatcherInterface> patcherInterfacePtr(${PLUGIN_NAME}FactoryFunction(RNBO::Platform::get())());")
+    set(RNBO_FMOD_FACTORY_EXTERN "extern \"C\" RNBO::PatcherFactoryFunctionPtr ${RNBO_FACTORY_CLASS}FactoryFunction(RNBO::PlatformInterface* platformInterface);")
+    set(RNBO_FMOD_FACTORY_GETDSP_ALLOC "    RNBO::UniquePtr<RNBO::PatcherInterface> patcherInterfacePtr(${RNBO_FACTORY_CLASS}FactoryFunction(RNBO::Platform::get())());")
 else()
-    set(RNBO_FMOD_FACTORY_EXTERN "extern \"C\" RNBO::PatcherFactoryFunctionPtr ${PLUGIN_NAME}FactoryFunction();")
-    set(RNBO_FMOD_FACTORY_GETDSP_ALLOC "    RNBO::UniquePtr<RNBO::PatcherInterface> patcherInterfacePtr(${PLUGIN_NAME}FactoryFunction()());")
+    set(RNBO_FMOD_FACTORY_EXTERN "extern \"C\" RNBO::PatcherFactoryFunctionPtr ${RNBO_FACTORY_CLASS}FactoryFunction();")
+    set(RNBO_FMOD_FACTORY_GETDSP_ALLOC "    RNBO::UniquePtr<RNBO::PatcherInterface> patcherInterfacePtr(${RNBO_FACTORY_CLASS}FactoryFunction()());")
 endif()
 
 set(_RNBO_WRAPPER_DEFS RNBO_NO_PATCHERFACTORY)

@@ -201,7 +201,7 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspcreate(FMOD_DSP_STATE *dsp_sta
     //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Create","Is istrument: %d", state->isInstrument);
     //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Create","Multichannelthing: %d", state->multiChannelExpandable);
     
-    state->Init(@PLUGIN_NAME@FactoryFunction);
+    state->Init(@RNBO_FACTORY_CLASS@FactoryFunction);
     
     return FMOD_OK;
 }
