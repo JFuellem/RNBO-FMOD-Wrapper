@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Emit a Unity IL2CPP static-plugin source folder from an RNBO FMOD wrap."""
+"""Emit Unity IL2CPP static-plugin folders: shared RNBO runtime + slim plugin."""
 
 from __future__ import annotations
 
@@ -15,6 +15,8 @@ INCLUDE_RE = re.compile(r'(#\s*include\s*")([^"]+)(")')
 SOURCE_SUFFIXES = {".cpp", ".c", ".cc", ".cxx", ".mm"}
 HEADER_SUFFIXES = {".h", ".hpp", ".hh", ".inl"}
 
+RUNTIME_AMALG = "RNBO_runtime_unity.cpp"
+
 
 def _guid() -> str:
     return uuid.uuid4().hex
@@ -23,6 +25,13 @@ def _guid() -> str:
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def _strip_exec(root: Path) -> None:
+    for f in root.rglob("*"):
+        if f.is_file():
+            mode = f.stat().st_mode
+            f.chmod(mode & ~stat.S_IXUSR & ~stat.S_IXGRP & ~stat.S_IXOTH)
 
 
 def _plugin_meta(enabled: bool) -> str:
@@ -83,27 +92,47 @@ def _unity_build_header(legacy_factory: bool) -> str:
     )
 
 
-def _readme(plugin_name: str, amalg_name: str) -> str:
+def _runtime_readme() -> str:
     return textwrap.dedent(
         f"""\
-        # {plugin_name} — Unity static FMOD plugin
+        # RNBO FMOD — Unity runtime
 
-        Drop this folder anywhere under `Assets/` (e.g. `Assets/Plugins/RNBO_FMOD/{plugin_name}/`).
+        Drop this folder **once** under `Assets/` (e.g. `Assets/Plugins/RNBO_FMOD/Runtime/`).
         Not under `Assets/Plugins/FMOD/platforms/.../lib`.
 
-        Only `{amalg_name}` should be ticked. In FMOD Settings, add
-        `{plugin_name}_GetDSPDescription` to **Static Plugins**. Keep the dynamic
-        plugin on **Dynamic Plugins** for the Editor.
+        Tick only `{RUNTIME_AMALG}`. Do not add this folder to FMOD Static Plugins.
 
-        If `fmod_hpp.h` / `fmod.h` are missing, copy FMOD Engine `api/core/inc` into
-        this folder (headers are flattened next to the compile unit).
+        Each audio plugin is a separate `*_unity_static` folder. All plugins must
+        use the same RNBO export version as this runtime.
+
+        If `fmod_hpp.h` / `fmod.h` are missing, copy FMOD Engine `api/core/inc`
+        into this folder (headers are flattened next to the compile unit).
         """
     )
 
 
-def _editor_script(plugin_name: str) -> str:
+def _plugin_readme(plugin_name: str, amalg_name: str) -> str:
     return textwrap.dedent(
         f"""\
+        # {plugin_name} — Unity static FMOD plugin
+
+        Also drop `RNBO_FMOD_runtime/` under `Assets/` (once). This folder is
+        plugin-only and needs that runtime for RNBO / FMOD headers.
+
+        Example: `Assets/Plugins/RNBO_FMOD/Runtime/` and
+        `Assets/Plugins/RNBO_FMOD/{plugin_name}/`. Not under
+        `Assets/Plugins/FMOD/platforms/.../lib`.
+
+        Tick `{RUNTIME_AMALG}` in the runtime folder and `{amalg_name}` here.
+        In FMOD Settings, add `{plugin_name}_GetDSPDescription` to **Static Plugins**.
+        Keep the dynamic plugin on **Dynamic Plugins** for the Editor.
+        """
+    )
+
+
+def _editor_script() -> str:
+    return textwrap.dedent(
+        """\
         using System.Collections.Generic;
         using System.IO;
         using UnityEditor;
@@ -111,16 +140,16 @@ def _editor_script(plugin_name: str) -> str:
         using UnityEditor.Build.Reporting;
         using UnityEngine;
 
-        namespace RNBOFMOD.UnityBuild.{plugin_name}
-        {{
+        namespace RNBOFMOD.UnityBuild
+        {
             class RNBOFMODUnityIncludes : IPreprocessBuildWithReport
-            {{
+            {
                 public int callbackOrder => 0;
 
-                const string MarkerDefine = "RNBO_FMOD_UNITY_{plugin_name}";
+                const string MarkerDefine = "RNBO_FMOD_UNITY_RUNTIME";
 
                 public void OnPreprocessBuild(BuildReport report)
-                {{
+                {
                     var dirs = FindIncludeDirs();
                     if (dirs.Count == 0)
                         return;
@@ -136,18 +165,18 @@ def _editor_script(plugin_name: str) -> str:
                         return;
 
                     PlayerSettings.SetAdditionalIl2CppArgs((current + " " + extra).Trim());
-                    Debug.Log("[RNBO-FMOD] IL2CPP include paths added for {plugin_name}");
-                }}
+                    Debug.Log("[RNBO-FMOD] IL2CPP include paths added for RNBO runtime + plugins");
+                }
 
                 static List<string> FindIncludeDirs()
-                {{
+                {
                     var result = new List<string>();
                     var assets = Application.dataPath;
                     if (!Directory.Exists(assets))
                         return result;
 
                     foreach (var marker in Directory.GetFiles(assets, "RNBO_UnityBuild.h", SearchOption.AllDirectories))
-                    {{
+                    {
                         var root = Path.GetDirectoryName(marker);
                         if (string.IsNullOrEmpty(root))
                             continue;
@@ -158,22 +187,31 @@ def _editor_script(plugin_name: str) -> str:
                         AddDir(result, Path.Combine(root, "3rdparty", "concurrentqueue"));
                         AddDir(result, Path.Combine(root, "3rdparty", "readerwriterqueue"));
                         AddDir(result, Path.Combine(root, "3rdparty", "MPark_variant"));
-                    }}
+                    }
+
+                    foreach (var marker in Directory.GetFiles(assets, "*_unity.cpp", SearchOption.AllDirectories))
+                    {
+                        if (Path.GetFileName(marker) == "RNBO_runtime_unity.cpp")
+                            continue;
+                        var root = Path.GetDirectoryName(marker);
+                        if (!string.IsNullOrEmpty(root))
+                            AddDir(result, root);
+                    }
                     return result;
-                }}
+                }
 
                 static void AddDir(List<string> list, string dir)
-                {{
+                {
                     if (Directory.Exists(dir) && !list.Contains(dir))
                         list.Add(dir);
-                }}
+                }
 
                 static string Quote(string path)
-                {{
+                {
                     return path.Replace("\\\\", "/");
-                }}
-            }}
-        }}
+                }
+            }
+        }
         """
     )
 
@@ -244,11 +282,25 @@ def _collect_flat_files(rnbo_root: Path) -> list[Path]:
     return [p for p in files if p.is_file()]
 
 
+def _reset_dir(path: Path) -> None:
+    if path.exists():
+        shutil.rmtree(path)
+    path.mkdir(parents=True)
+
+
+def _emit_files(root: Path, planned: list[tuple[Path, str, str]], used_h: set[str]) -> None:
+    for src, _rel, dest in planned:
+        dst = root / dest
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        raw = src.read_text(encoding="utf-8", errors="replace")
+        _write(dst, _rewrite_file_text(raw, used_h))
+
+
 def export_bundle(args: argparse.Namespace) -> None:
-    out = Path(args.out).resolve()
-    if out.exists():
-        shutil.rmtree(out)
-    out.mkdir(parents=True)
+    plugin_out = Path(args.out).resolve()
+    runtime_out = Path(args.runtime_out).resolve()
+    _reset_dir(plugin_out)
+    _reset_dir(runtime_out)
 
     rnbo_src = Path(args.rnbo_src).resolve()
     rnbo_root = rnbo_src / "rnbo"
@@ -259,17 +311,19 @@ def export_bundle(args: argparse.Namespace) -> None:
     if not patcher_files:
         raise SystemExit(f"No patcher .cpp in {rnbo_src}")
 
-    extras: list[tuple[Path, str]] = []
+    plugin_extras: list[tuple[Path, str]] = []
     for patcher in patcher_files:
-        extras.append((patcher, patcher.name))
-    extras.append((Path(args.wrapper_dir) / "RNBOWrapper.cpp", "RNBOWrapper.cpp"))
-    extras.append((Path(args.wrapper_dir) / "RNBOWrapper.hpp", "RNBOWrapper.hpp"))
-    extras.append((Path(args.generated), "RNBO_FMOD.cpp"))
+        plugin_extras.append((patcher, patcher.name))
+    plugin_extras.append((Path(args.generated), "RNBO_FMOD.cpp"))
+
+    runtime_extras: list[tuple[Path, str]] = []
+    runtime_extras.append((Path(args.wrapper_dir) / "RNBOWrapper.cpp", "RNBOWrapper.cpp"))
+    runtime_extras.append((Path(args.wrapper_dir) / "RNBOWrapper.hpp", "RNBOWrapper.hpp"))
     decoder_dir = Path(args.decoder_dir)
     for name in ("dr_wav.h", "dr_mp3.h"):
         src = decoder_dir / name
         if src.is_file():
-            extras.append((src, name))
+            runtime_extras.append((src, name))
 
     fmod_files: list[Path] = []
     fmod_inc_src = Path(args.fmod_inc)
@@ -282,7 +336,7 @@ def export_bundle(args: argparse.Namespace) -> None:
     used_h = {p.name for p in fmod_files if p.suffix.lower() == ".h"}
     used_h.update({"RNBO_UnityBuild.h"})
 
-    jobs: list[tuple[Path, str]] = []
+    runtime_jobs: list[tuple[Path, str]] = []
     for src in _collect_flat_files(rnbo_root):
         if src.parent == rnbo_root:
             rel = src.name
@@ -290,56 +344,72 @@ def export_bundle(args: argparse.Namespace) -> None:
             rel = src.relative_to(rnbo_root / "src").as_posix()
         else:
             rel = src.name
-        jobs.append((src, rel))
-    for src, rel in extras:
-        jobs.append((src, rel))
+        runtime_jobs.append((src, rel))
+    runtime_jobs.extend(runtime_extras)
     for src in fmod_files:
-        jobs.append((src, src.name))
+        runtime_jobs.append((src, src.name))
 
-    dest_used: set[str] = set()
-    planned: list[tuple[Path, str, str]] = []
-    for src, rel in jobs:
-        dest = _dest_name(rel, used_h)
-        if dest in dest_used and not rel.startswith("3rdparty/"):
-            raise SystemExit(f"Flatten collision: {rel} -> {dest}")
-        dest_used.add(dest)
-        planned.append((src, rel, dest))
-
-    for src, rel, dest in planned:
-        dst = out / dest
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        raw = src.read_text(encoding="utf-8", errors="replace")
-        _write(dst, _rewrite_file_text(raw, used_h))
+    def plan(jobs: list[tuple[Path, str]]) -> list[tuple[Path, str, str]]:
+        dest_used: set[str] = set()
+        planned: list[tuple[Path, str, str]] = []
+        for src, rel in jobs:
+            dest = _dest_name(rel, used_h)
+            if dest in dest_used and not rel.startswith("3rdparty/"):
+                raise SystemExit(f"Flatten collision: {rel} -> {dest}")
+            dest_used.add(dest)
+            planned.append((src, rel, dest))
+        return planned
 
     plugin = args.plugin_name
+    runtime_planned = plan(runtime_jobs)
+    plugin_planned = plan(plugin_extras)
+    plugin_planned = [
+        (src, rel, f"{plugin}_{dest}") for src, rel, dest in plugin_planned
+    ]
+
+    _emit_files(runtime_out, runtime_planned, used_h)
+    _emit_files(plugin_out, plugin_planned, used_h)
+
     amalg_name = f"{plugin}_unity.cpp"
-    patcher_inc = Path(patcher_files[0].name).stem + ".inc.h"
-    _write(out / "RNBO_UnityBuild.h", _unity_build_header(args.legacy_factory))
+    patcher_inc = f"{plugin}_{Path(patcher_files[0].name).stem}.inc.h"
+    fmod_inc = f"{plugin}_RNBO_FMOD.inc.h"
+
+    _write(runtime_out / "RNBO_UnityBuild.h", _unity_build_header(args.legacy_factory))
     _write(
-        out / amalg_name,
+        runtime_out / RUNTIME_AMALG,
         textwrap.dedent(
             f"""\
             #include "RNBO_UnityBuild.h"
             #include "RNBOWrapper.inc.h"
             #include "RNBO.inc.h"
-            #include "{patcher_inc}"
-            #include "RNBO_FMOD.inc.h"
             """
         ),
     )
-    _write(out / f"{amalg_name}.meta", _plugin_meta(enabled=True))
-    _write(out / "README.md", _readme(plugin, amalg_name))
-
-    editor = out / "Editor"
+    _write(runtime_out / f"{RUNTIME_AMALG}.meta", _plugin_meta(enabled=True))
+    _write(runtime_out / "README.md", _runtime_readme())
+    editor = runtime_out / "Editor"
     editor.mkdir()
-    _write(editor / "RNBOFMODUnityIncludes.cs", _editor_script(plugin))
+    _write(editor / "RNBOFMODUnityIncludes.cs", _editor_script())
 
-    for f in out.rglob("*"):
-        if f.is_file():
-            mode = f.stat().st_mode
-            f.chmod(mode & ~stat.S_IXUSR & ~stat.S_IXGRP & ~stat.S_IXOTH)
+    _write(
+        plugin_out / amalg_name,
+        textwrap.dedent(
+            f"""\
+            #include "RNBO_UnityBuild.h"
+            #include "{patcher_inc}"
+            #include "{fmod_inc}"
+            """
+        ),
+    )
+    _write(plugin_out / f"{amalg_name}.meta", _plugin_meta(enabled=True))
+    _write(plugin_out / "README.md", _plugin_readme(plugin, amalg_name))
 
-    print(f"Unity static source bundle written to {out}")
+    _strip_exec(runtime_out)
+    _strip_exec(plugin_out)
+
+    print(f"Unity RNBO runtime written to {runtime_out}")
+    print(f"Tick only: {RUNTIME_AMALG}")
+    print(f"Unity plugin source written to {plugin_out}")
     print(f"Tick only: {amalg_name}")
     print(f"Register in FMOD Static Plugins: {plugin}_GetDSPDescription")
 
@@ -347,6 +417,7 @@ def export_bundle(args: argparse.Namespace) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--runtime-out", required=True)
     parser.add_argument("--plugin-name", required=True)
     parser.add_argument("--generated", required=True)
     parser.add_argument("--rnbo-src", required=True)

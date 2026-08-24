@@ -199,9 +199,11 @@ set_target_properties(oLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
     set(_UNITY_BUNDLE_DIR "${PARENT_DIR}/BuildProducts/${PROJECT_NAME}_unity_static")
+    set(_UNITY_RUNTIME_DIR "${PARENT_DIR}/BuildProducts/RNBO_FMOD_runtime")
     set(_UNITY_EXPORT_CMD
         ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/unity_static_export.py"
             --out "${_UNITY_BUNDLE_DIR}"
+            --runtime-out "${_UNITY_RUNTIME_DIR}"
             --plugin-name "${PROJECT_NAME}"
             --generated "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp"
             --rnbo-src "${PARENT_DIR}/SrcExportDir"
@@ -214,7 +216,7 @@ if(Python3_Interpreter_FOUND)
     endif()
     add_custom_target(unity_static_export
         COMMAND ${_UNITY_EXPORT_CMD}
-        COMMENT "Writing Unity static source bundle to ${_UNITY_BUNDLE_DIR}"
+        COMMENT "Writing Unity runtime to ${_UNITY_RUNTIME_DIR} and plugin to ${_UNITY_BUNDLE_DIR}"
         VERBATIM
     )
 else()
