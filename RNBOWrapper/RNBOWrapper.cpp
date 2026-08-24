@@ -28,8 +28,8 @@ void RNBOWrapper::Init(
 #else
         auto patcherInterface = factoryProvider()();
 #endif
-        rnboObj.push_back(std::make_unique<RNBO::CoreObject>(
-            RNBO::UniquePtr<RNBO::PatcherInterface>(patcherInterface)));
+        rnboObj.push_back(std::unique_ptr<RNBO::CoreObject>(new RNBO::CoreObject(
+            RNBO::UniquePtr<RNBO::PatcherInterface>(patcherInterface))));
         c++;
     } while (multiChannelExpandable && c<MAX_CHANS);
 }
@@ -46,8 +46,8 @@ void RNBOWrapper::CleanupBuffers()
         interleaveBuffer = nullptr;
     }
 
-    for (auto const& [index, buffer] : mDataRefBuffers) {
-        delete[] buffer;
+    for (auto const& entry : mDataRefBuffers) {
+        delete[] entry.second;
     }
     mDataRefBuffers.clear();
 }
