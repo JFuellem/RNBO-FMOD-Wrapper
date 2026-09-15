@@ -35,7 +35,7 @@ This is an FMOD Wrapper for RNBO, which simplifies the creation of plugins for F
 
 ## Unity static source (IL2CPP)
 
-Editor and desktop still use the dynamic plugin in `BuildProducts/`. IL2CPP players need source instead: one shared RNBO runtime plus a slim folder per plugin. Compiling the runtime into every plugin folder duplicates RNBO symbols as soon as you add a second plugin.
+Editor and desktop still use the dynamic plugin in `BuildProducts/`. IL2CPP players need source instead: shared FMOD headers, one RNBO runtime, and a slim folder per plugin.
 
 ```bash
 cd /path/to/CMake
@@ -43,12 +43,13 @@ cmake -B Build
 cmake --build Build --target unity_static_export
 ```
 
-Copy both folders under `Assets/` (not under `Assets/Plugins/FMOD/platforms/.../lib`):
+Copy these folders under `Assets/` (not under `Assets/Plugins/FMOD/platforms/.../lib`):
 
+- `BuildProducts/FMOD_unity_inc/` once (shared with other wrappers)
 - `BuildProducts/RNBO_FMOD_runtime/` once (e.g. `Assets/Plugins/RNBO_FMOD/Runtime/`)
 - `BuildProducts/<PluginName>_unity_static/` per plugin (e.g. `Assets/Plugins/RNBO_FMOD/<PluginName>/`)
 
-In FMOD Settings, add each `<PluginName>_GetDSPDescription` to **Static Plugins**. Do not register the runtime. Keep the dynamic library on **Dynamic Plugins** for the Editor.
+In FMOD Settings, add each `<PluginName>_GetDSPDescription` to **Static Plugins**. Do not register the runtime or `FMOD_unity_inc`. Keep the dynamic library on **Dynamic Plugins** for the Editor.
 
 All plugins must share the same RNBO export version as the runtime folder.
 

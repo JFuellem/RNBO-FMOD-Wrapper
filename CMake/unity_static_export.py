@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import posixpath
 import re
 import shutil
 import stat
@@ -16,6 +17,7 @@ SOURCE_SUFFIXES = {".cpp", ".c", ".cc", ".cxx", ".mm"}
 HEADER_SUFFIXES = {".h", ".hpp", ".hh", ".inl"}
 
 RUNTIME_AMALG = "RNBO_runtime_unity.cpp"
+FMOD_INC_MARKER = "FMOD_UnityInc.h"
 
 
 def _guid() -> str:
@@ -102,11 +104,26 @@ def _runtime_readme() -> str:
 
         Tick only `{RUNTIME_AMALG}`. Do not add this folder to FMOD Static Plugins.
 
-        Each audio plugin is a separate `*_unity_static` folder. All plugins must
+        Also drop `FMOD_unity_inc/` under `Assets/` once (shared by all wrappers).
+        Each audio plugin is a separate `*_unity_static` folder. All RNBO plugins must
         use the same RNBO export version as this runtime.
+        """
+    )
+
+
+def _fmod_readme() -> str:
+    return textwrap.dedent(
+        """\
+        # FMOD headers — Unity IL2CPP
+
+        Drop this folder **once** under `Assets/` (e.g. `Assets/Plugins/FMOD_unity_inc/`).
+        Not under `Assets/Plugins/FMOD/platforms/.../lib`.
+
+        Shared by RNBO, HeavyPd, and Cmajor static plugins. Do not tick any
+        compile unit here, and do not add this folder to FMOD Static Plugins.
 
         If `fmod_hpp.h` / `fmod.h` are missing, copy FMOD Engine `api/core/inc`
-        into this folder (headers are flattened next to the compile unit).
+        into this folder (headers are flattened next to the marker).
         """
     )
 
@@ -116,8 +133,8 @@ def _plugin_readme(plugin_name: str, amalg_name: str) -> str:
         f"""\
         # {plugin_name} — Unity static FMOD plugin
 
-        Also drop `RNBO_FMOD_runtime/` under `Assets/` (once). This folder is
-        plugin-only and needs that runtime for RNBO / FMOD headers.
+        Also drop `FMOD_unity_inc/` and `RNBO_FMOD_runtime/` under `Assets/` (once
+        each). This folder is plugin-only and needs those two for FMOD / RNBO headers.
 
         Example: `Assets/Plugins/RNBO_FMOD/Runtime/` and
         `Assets/Plugins/RNBO_FMOD/{plugin_name}/`. Not under
@@ -150,9 +167,13 @@ def _editor_script() -> str:
 
                 public void OnPreprocessBuild(BuildReport report)
                 {
+                    var current = StripOurArgs(PlayerSettings.GetAdditionalIl2CppArgs() ?? "");
                     var dirs = FindIncludeDirs();
                     if (dirs.Count == 0)
+                    {
+                        PlayerSettings.SetAdditionalIl2CppArgs(current);
                         return;
+                    }
 
                     var flags = new List<string>();
                     foreach (var dir in dirs)
@@ -160,12 +181,16 @@ def _editor_script() -> str:
                     flags.Add("-D" + MarkerDefine + "=1");
 
                     var extra = "--compiler-flags=\\"" + string.Join(" ", flags) + "\\"";
-                    var current = PlayerSettings.GetAdditionalIl2CppArgs() ?? "";
-                    if (current.Contains(MarkerDefine))
-                        return;
-
                     PlayerSettings.SetAdditionalIl2CppArgs((current + " " + extra).Trim());
-                    Debug.Log("[RNBO-FMOD] IL2CPP include paths added for RNBO runtime + plugins");
+                    Debug.Log("[RNBO-FMOD] IL2CPP include paths refreshed for RNBO runtime + plugins");
+                }
+
+                static string StripOurArgs(string current)
+                {
+                    return System.Text.RegularExpressions.Regex.Replace(
+                        current ?? "",
+                        "--compiler-flags=\\"[^\\"]*" + MarkerDefine + "[^\\"]*\\"",
+                        "").Trim();
                 }
 
                 static List<string> FindIncludeDirs()
@@ -175,18 +200,18 @@ def _editor_script() -> str:
                     if (!Directory.Exists(assets))
                         return result;
 
+                    foreach (var marker in Directory.GetFiles(assets, "FMOD_UnityInc.h", SearchOption.AllDirectories))
+                    {
+                        var root = Path.GetDirectoryName(marker);
+                        if (!string.IsNullOrEmpty(root))
+                            AddDir(result, root);
+                    }
+
                     foreach (var marker in Directory.GetFiles(assets, "RNBO_UnityBuild.h", SearchOption.AllDirectories))
                     {
                         var root = Path.GetDirectoryName(marker);
-                        if (string.IsNullOrEmpty(root))
-                            continue;
-                        AddDir(result, root);
-                        AddDir(result, Path.Combine(root, "3rdparty"));
-                        AddDir(result, Path.Combine(root, "3rdparty", "json"));
-                        AddDir(result, Path.Combine(root, "3rdparty", "cppcodec"));
-                        AddDir(result, Path.Combine(root, "3rdparty", "concurrentqueue"));
-                        AddDir(result, Path.Combine(root, "3rdparty", "readerwriterqueue"));
-                        AddDir(result, Path.Combine(root, "3rdparty", "MPark_variant"));
+                        if (!string.IsNullOrEmpty(root))
+                            AddDir(result, root);
                     }
 
                     foreach (var marker in Directory.GetFiles(assets, "*_unity.cpp", SearchOption.AllDirectories))
@@ -220,11 +245,18 @@ def _dest_name(rel: str, used_h: set[str]) -> str:
     """Map a source-relative path to a flattened Unity filename."""
     rel_u = rel.replace("\\", "/")
     if rel_u.startswith("3rdparty/"):
-        if rel_u.endswith(".hpp"):
-            return rel_u[:-4] + ".h"
-        if Path(rel_u).suffix.lower() in SOURCE_SUFFIXES:
-            return str(Path(rel_u).with_suffix(".inc.h"))
-        return rel_u
+        parts = Path(rel_u).parts[1:]
+        if not parts:
+            return Path(rel_u).name
+        *dirs, filename = parts
+        stem = Path(filename).stem
+        suffix = Path(filename).suffix.lower()
+        joined = "_".join([*dirs, stem]) if dirs else stem
+        if suffix in SOURCE_SUFFIXES:
+            return f"{joined}.inc.h"
+        if suffix in {".h", ".hpp", ".hh", ".inl"}:
+            return f"{joined}.h"
+        return "_".join([*dirs, filename]) if dirs else filename
 
     name = Path(rel_u).name
     suffix = Path(name).suffix.lower()
@@ -239,24 +271,31 @@ def _dest_name(rel: str, used_h: set[str]) -> str:
     return name
 
 
-def _rewrite_include(inc: str, used_h: set[str]) -> str:
+def _rewrite_include(inc: str, from_rel: str, dest_by_rel: dict[str, str], used_h: set[str]) -> str:
     inc_u = inc.replace("\\", "/")
-    if "3rdparty/" in inc_u:
-        return inc_u[:-4] + ".h" if inc_u.endswith(".hpp") else inc_u
-    if inc_u.startswith("../externals/"):
-        return _dest_name(inc_u, used_h)
-    # Keep relative 3rdparty paths (detail/..., ../data/..., internal/...).
-    if inc_u.startswith(("../", "./")) or (
-        "/" in inc_u and not inc_u.startswith(("src/", "common/", "externals/"))
-    ):
-        return inc_u[:-4] + ".h" if inc_u.endswith(".hpp") else inc_u
+    from_rel_u = from_rel.replace("\\", "/")
+    from_dir = posixpath.dirname(from_rel_u)
+
+    candidates = [inc_u]
+    if from_dir and from_dir != ".":
+        candidates.append(posixpath.normpath(f"{from_dir}/{inc_u}").replace("\\", "/"))
+    else:
+        candidates.append(posixpath.normpath(inc_u).replace("\\", "/"))
+    if inc_u.startswith("src/"):
+        candidates.append(inc_u[4:])
+    elif not inc_u.startswith("3rdparty/"):
+        candidates.append(posixpath.normpath(f"src/{inc_u}").replace("\\", "/"))
+
+    for cand in candidates:
+        if cand in dest_by_rel:
+            return dest_by_rel[cand]
     return _dest_name(inc_u, used_h)
 
 
-def _rewrite_file_text(text: str, used_h: set[str]) -> str:
+def _rewrite_file_text(text: str, from_rel: str, dest_by_rel: dict[str, str], used_h: set[str]) -> str:
     def repl(match: re.Match[str]) -> str:
         prefix, inc, suffix = match.group(1), match.group(2), match.group(3)
-        return f"{prefix}{_rewrite_include(inc, used_h)}{suffix}"
+        return f"{prefix}{_rewrite_include(inc, from_rel, dest_by_rel, used_h)}{suffix}"
 
     return INCLUDE_RE.sub(repl, text)
 
@@ -288,19 +327,26 @@ def _reset_dir(path: Path) -> None:
     path.mkdir(parents=True)
 
 
-def _emit_files(root: Path, planned: list[tuple[Path, str, str]], used_h: set[str]) -> None:
-    for src, _rel, dest in planned:
+def _emit_files(
+    root: Path,
+    planned: list[tuple[Path, str, str]],
+    dest_by_rel: dict[str, str],
+    used_h: set[str],
+) -> None:
+    for src, rel, dest in planned:
         dst = root / dest
         dst.parent.mkdir(parents=True, exist_ok=True)
         raw = src.read_text(encoding="utf-8", errors="replace")
-        _write(dst, _rewrite_file_text(raw, used_h))
+        _write(dst, _rewrite_file_text(raw, rel, dest_by_rel, used_h))
 
 
 def export_bundle(args: argparse.Namespace) -> None:
     plugin_out = Path(args.out).resolve()
     runtime_out = Path(args.runtime_out).resolve()
+    fmod_out = Path(args.fmod_out).resolve()
     _reset_dir(plugin_out)
     _reset_dir(runtime_out)
+    _reset_dir(fmod_out)
 
     rnbo_src = Path(args.rnbo_src).resolve()
     rnbo_root = rnbo_src / "rnbo"
@@ -334,7 +380,7 @@ def export_bundle(args: argparse.Namespace) -> None:
         ]
 
     used_h = {p.name for p in fmod_files if p.suffix.lower() == ".h"}
-    used_h.update({"RNBO_UnityBuild.h"})
+    used_h.update({"RNBO_UnityBuild.h", FMOD_INC_MARKER})
 
     runtime_jobs: list[tuple[Path, str]] = []
     for src in _collect_flat_files(rnbo_root):
@@ -346,15 +392,15 @@ def export_bundle(args: argparse.Namespace) -> None:
             rel = src.name
         runtime_jobs.append((src, rel))
     runtime_jobs.extend(runtime_extras)
-    for src in fmod_files:
-        runtime_jobs.append((src, src.name))
+
+    fmod_jobs: list[tuple[Path, str]] = [(src, src.name) for src in fmod_files]
 
     def plan(jobs: list[tuple[Path, str]]) -> list[tuple[Path, str, str]]:
         dest_used: set[str] = set()
         planned: list[tuple[Path, str, str]] = []
         for src, rel in jobs:
             dest = _dest_name(rel, used_h)
-            if dest in dest_used and not rel.startswith("3rdparty/"):
+            if dest in dest_used:
                 raise SystemExit(f"Flatten collision: {rel} -> {dest}")
             dest_used.add(dest)
             planned.append((src, rel, dest))
@@ -363,16 +409,25 @@ def export_bundle(args: argparse.Namespace) -> None:
     plugin = args.plugin_name
     runtime_planned = plan(runtime_jobs)
     plugin_planned = plan(plugin_extras)
+    fmod_planned = plan(fmod_jobs)
     plugin_planned = [
         (src, rel, f"{plugin}_{dest}") for src, rel, dest in plugin_planned
     ]
 
-    _emit_files(runtime_out, runtime_planned, used_h)
-    _emit_files(plugin_out, plugin_planned, used_h)
+    dest_by_rel: dict[str, str] = {}
+    for _src, rel, dest in runtime_planned + plugin_planned + fmod_planned:
+        dest_by_rel[rel.replace("\\", "/")] = dest
+
+    _emit_files(runtime_out, runtime_planned, dest_by_rel, used_h)
+    _emit_files(plugin_out, plugin_planned, dest_by_rel, used_h)
+    _emit_files(fmod_out, fmod_planned, dest_by_rel, used_h)
 
     amalg_name = f"{plugin}_unity.cpp"
     patcher_inc = f"{plugin}_{Path(patcher_files[0].name).stem}.inc.h"
     fmod_inc = f"{plugin}_RNBO_FMOD.inc.h"
+
+    _write(fmod_out / FMOD_INC_MARKER, "#pragma once\n")
+    _write(fmod_out / "README.md", _fmod_readme())
 
     _write(runtime_out / "RNBO_UnityBuild.h", _unity_build_header(args.legacy_factory))
     _write(
@@ -406,7 +461,9 @@ def export_bundle(args: argparse.Namespace) -> None:
 
     _strip_exec(runtime_out)
     _strip_exec(plugin_out)
+    _strip_exec(fmod_out)
 
+    print(f"Unity FMOD headers written to {fmod_out}")
     print(f"Unity RNBO runtime written to {runtime_out}")
     print(f"Tick only: {RUNTIME_AMALG}")
     print(f"Unity plugin source written to {plugin_out}")
@@ -418,6 +475,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True)
     parser.add_argument("--runtime-out", required=True)
+    parser.add_argument("--fmod-out", required=True)
     parser.add_argument("--plugin-name", required=True)
     parser.add_argument("--generated", required=True)
     parser.add_argument("--rnbo-src", required=True)
