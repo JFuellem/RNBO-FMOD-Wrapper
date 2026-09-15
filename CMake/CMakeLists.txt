@@ -79,7 +79,12 @@ if(RNBO_LEGACY_PATCHER_FACTORY)
     list(APPEND _RNBO_WRAPPER_DEFS RNBO_LEGACY_PATCHER_FACTORY=1)
 endif()
 
-project(${PLUGIN_NAME})
+option(RNBO_UNITY_SOURCE_ONLY "Export Unity sources without a native compiler or platform SDK" OFF)
+if(RNBO_UNITY_SOURCE_ONLY)
+    project(${PLUGIN_NAME} LANGUAGES NONE)
+else()
+    project(${PLUGIN_NAME})
+endif()
 message(STATUS "Building Project: ${PROJECT_NAME} for System: ${CMAKE_SYSTEM_NAME}")
 
 #--------------------------------------------------------------------------------
@@ -106,6 +111,7 @@ file(GLOB WRAPPER_HPP_FILES "../RNBOWrapper/RNBOWrapper.hpp") # For Xcode projec
 # Create a library of object files containing the plugin-specific sources.
 # This doesn't produce a final library file, just a collection of .o files
 # that we can use to build our final static or shared libraries later.
+if(NOT RNBO_UNITY_SOURCE_ONLY)
 add_library(oLib OBJECT
     ${RNBOSRC_FILES}
     ${GENERATED_FILES}
@@ -191,6 +197,7 @@ target_include_directories(oLib PRIVATE
 
 target_compile_definitions(oLib PRIVATE ${_RNBO_WRAPPER_DEFS})
 set_target_properties(oLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif()
 
 #--------------------------------------------------------------------------------
 # Unity static source (IL2CPP)
@@ -222,5 +229,8 @@ if(Python3_Interpreter_FOUND)
         VERBATIM
     )
 else()
+    if(RNBO_UNITY_SOURCE_ONLY)
+        message(FATAL_ERROR "Python3 is required for unity_static_export")
+    endif()
     message(STATUS "Python3 not found: unity_static_export target skipped")
 endif()

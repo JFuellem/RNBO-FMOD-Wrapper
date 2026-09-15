@@ -53,10 +53,17 @@ def _plugin_meta(enabled: bool) -> str:
           validateReferences: 1
           platformData:
           - first:
-              : Any
+              Any:
             second:
               enabled: {any_enabled}
-              settings: {{}}
+              settings:
+                Exclude Editor: 1
+          - first:
+              Editor: Editor
+            second:
+              enabled: 0
+              settings:
+                DefaultValueInitialized: true
           userData:
           assetBundleName:
           assetBundleVariant:
@@ -102,7 +109,8 @@ def _runtime_readme() -> str:
         Drop this folder **once** under `Assets/` (e.g. `Assets/Plugins/RNBO_FMOD/Runtime/`).
         Not under `Assets/Plugins/FMOD/platforms/.../lib`.
 
-        Tick only `{RUNTIME_AMALG}`. Do not add this folder to FMOD Static Plugins.
+        `{RUNTIME_AMALG}` is enabled by its supplied `.meta` file. Keep that file.
+        Do not add this folder to FMOD Static Plugins.
 
         Also drop `FMOD_unity_inc/` under `Assets/` once (shared by all wrappers).
         Each audio plugin is a separate `*_unity_static` folder. All RNBO plugins must
@@ -122,8 +130,9 @@ def _fmod_readme() -> str:
         Shared by RNBO, HeavyPd, and Cmajor static plugins. Do not tick any
         compile unit here, and do not add this folder to FMOD Static Plugins.
 
-        If `fmod_hpp.h` / `fmod.h` are missing, copy FMOD Engine `api/core/inc`
-        into this folder (headers are flattened next to the marker).
+        If FMOD headers are missing, put matching FMOD Engine `api/core/inc`
+        headers in the wrapper's `CMake/inc` and run `unity_static_export` again.
+        The exporter flattens headers and rewrites `.hpp` includes for Unity.
         """
     )
 
@@ -140,7 +149,10 @@ def _plugin_readme(plugin_name: str, amalg_name: str) -> str:
         `Assets/Plugins/RNBO_FMOD/{plugin_name}/`. Not under
         `Assets/Plugins/FMOD/platforms/.../lib`.
 
-        Tick `{RUNTIME_AMALG}` in the runtime folder and `{amalg_name}` here.
+        Keep the supplied `.meta` files: they enable `{RUNTIME_AMALG}` in the
+        runtime folder and `{amalg_name}` here for players, excluding the Editor.
+        In their Plugin Inspectors, select your static IL2CPP targets and exclude
+        any targets using dynamic plugins instead.
         In FMOD Settings, add `{plugin_name}_GetDSPDescription` to **Static Plugins**.
         Keep the dynamic plugin on **Dynamic Plugins** for the Editor.
         """
@@ -148,97 +160,7 @@ def _plugin_readme(plugin_name: str, amalg_name: str) -> str:
 
 
 def _editor_script() -> str:
-    return textwrap.dedent(
-        """\
-        using System.Collections.Generic;
-        using System.IO;
-        using UnityEditor;
-        using UnityEditor.Build;
-        using UnityEditor.Build.Reporting;
-        using UnityEngine;
-
-        namespace RNBOFMOD.UnityBuild
-        {
-            class RNBOFMODUnityIncludes : IPreprocessBuildWithReport
-            {
-                public int callbackOrder => 0;
-
-                const string MarkerDefine = "RNBO_FMOD_UNITY_RUNTIME";
-
-                public void OnPreprocessBuild(BuildReport report)
-                {
-                    var current = StripOurArgs(PlayerSettings.GetAdditionalIl2CppArgs() ?? "");
-                    var dirs = FindIncludeDirs();
-                    if (dirs.Count == 0)
-                    {
-                        PlayerSettings.SetAdditionalIl2CppArgs(current);
-                        return;
-                    }
-
-                    var flags = new List<string>();
-                    foreach (var dir in dirs)
-                        flags.Add("-I" + Quote(dir));
-                    flags.Add("-D" + MarkerDefine + "=1");
-
-                    var extra = "--compiler-flags=\\"" + string.Join(" ", flags) + "\\"";
-                    PlayerSettings.SetAdditionalIl2CppArgs((current + " " + extra).Trim());
-                    Debug.Log("[RNBO-FMOD] IL2CPP include paths refreshed for RNBO runtime + plugins");
-                }
-
-                static string StripOurArgs(string current)
-                {
-                    return System.Text.RegularExpressions.Regex.Replace(
-                        current ?? "",
-                        "--compiler-flags=\\"[^\\"]*" + MarkerDefine + "[^\\"]*\\"",
-                        "").Trim();
-                }
-
-                static List<string> FindIncludeDirs()
-                {
-                    var result = new List<string>();
-                    var assets = Application.dataPath;
-                    if (!Directory.Exists(assets))
-                        return result;
-
-                    foreach (var marker in Directory.GetFiles(assets, "FMOD_UnityInc.h", SearchOption.AllDirectories))
-                    {
-                        var root = Path.GetDirectoryName(marker);
-                        if (!string.IsNullOrEmpty(root))
-                            AddDir(result, root);
-                    }
-
-                    foreach (var marker in Directory.GetFiles(assets, "RNBO_UnityBuild.h", SearchOption.AllDirectories))
-                    {
-                        var root = Path.GetDirectoryName(marker);
-                        if (!string.IsNullOrEmpty(root))
-                            AddDir(result, root);
-                    }
-
-                    foreach (var marker in Directory.GetFiles(assets, "*_unity.cpp", SearchOption.AllDirectories))
-                    {
-                        if (Path.GetFileName(marker) == "RNBO_runtime_unity.cpp")
-                            continue;
-                        var root = Path.GetDirectoryName(marker);
-                        if (!string.IsNullOrEmpty(root))
-                            AddDir(result, root);
-                    }
-                    return result;
-                }
-
-                static void AddDir(List<string> list, string dir)
-                {
-                    if (Directory.Exists(dir) && !list.Contains(dir))
-                        list.Add(dir);
-                }
-
-                static string Quote(string path)
-                {
-                    return path.Replace("\\\\", "/");
-                }
-            }
-        }
-        """
-    )
+    return Path(__file__).with_name("RNBOFMODUnityIncludes.cs").read_text(encoding="utf-8")
 
 
 def _dest_name(rel: str, used_h: set[str]) -> str:
