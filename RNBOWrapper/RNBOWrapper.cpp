@@ -66,10 +66,7 @@ void RNBOWrapper::Reset()
 
 bool RNBOWrapper::DecodeAudio(const void* data, size_t dataLength, char*& decodedData, size_t& decodedLengthInBytes, unsigned int& channels, unsigned int& sampleRate)
 {
-    // The caller of this function is responsible for freeing the memory allocated for decodedData,
-    // which should be done via the callback passed to RNBO's setExternalData.
-
-    // Try WAV
+    // decodedData ownership transfers to the caller.
     drwav wav;
     if (drwav_init_memory(&wav, data, dataLength, NULL)) {
         drwav_uint64 frameCount = wav.totalPCMFrameCount;
@@ -86,8 +83,6 @@ bool RNBOWrapper::DecodeAudio(const void* data, size_t dataLength, char*& decode
         decodedLengthInBytes = totalSampleCount * sizeof(float);
         return true;
     }
-
-    // Try MP3
     drmp3 mp3;
     if (drmp3_init_memory(&mp3, data, dataLength, NULL)) {
         drmp3_uint64 pcmFrameCount = drmp3_get_pcm_frame_count(&mp3);
@@ -110,24 +105,17 @@ bool RNBOWrapper::DecodeAudio(const void* data, size_t dataLength, char*& decode
 
 void RNBOWrapper::SetExternalData(size_t dataRefIndex, char* data, size_t sizeInBytes, unsigned int channels, unsigned int sampleRate)
 {
-    // Check if we have an existing buffer for this index and free it
     if (mDataRefBuffers.count(dataRefIndex)) {
         delete[] mDataRefBuffers[dataRefIndex];
         mDataRefBuffers.erase(dataRefIndex);
     }
-    
-    // Store the new buffer (cast to float* since we allocated it as such in DecodeAudio)
     mDataRefBuffers[dataRefIndex] = reinterpret_cast<float*>(data);
     
     if (rnboObj.empty()) return;
-
-    // Get the ID from the first object
     const char* dataRefId = rnboObj[0]->getExternalDataId(static_cast<int>(dataRefIndex));
     RNBO::Float32AudioBuffer bufferType(channels, sampleRate);
-    
-    // Set for all objects
     for(size_t i = 0; i < rnboObj.size(); i++) {
-        // Pass nullptr as freeCallback because we manage the memory in mDataRefBuffers
+        // mDataRefBuffers owns the shared data; RNBO must not free it.
         rnboObj[i]->setExternalData(dataRefId, data, sizeInBytes, bufferType, nullptr);
     }
 }
@@ -215,8 +203,6 @@ namespace RNBOFMODHelpers
             obj->sendMessage(RNBO::TAG("abs_up"), std::move(posList), RNBO::TAG(""));
         }
     }
-
-
 
     FMOD_SPEAKERMODE GetSpeakermode(const RNBO::Index& channels)
     {

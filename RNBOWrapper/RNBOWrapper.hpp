@@ -46,8 +46,6 @@ public:
     size_t lastChannelCount = -1;
     
     std::map<size_t, float*> mDataRefBuffers;
-
-    // Destructor to ensure proper cleanup
     ~RNBOWrapper() {
         CleanupBuffers();
     }
@@ -61,7 +59,6 @@ public:
     void CleanupBuffers();
     bool DecodeAudio(const void* data, size_t dataLength, char*& decodedData, size_t& decodedLengthInBytes, unsigned int& channels, unsigned int& sampleRate);
     void SetExternalData(size_t dataRefIndex, char* data, size_t sizeInBytes, unsigned int channels, unsigned int sampleRate);
-
 
 };
 
@@ -78,7 +75,5 @@ FMOD_SPEAKERMODE GetSpeakermode(const RNBO::Index& channels);
 bool CheckIfOutputQuiet(float* outarray,size_t buffsize, size_t numchans);
 
 }
-
-
 
 #endif /* RNBOWrapper_hpp */

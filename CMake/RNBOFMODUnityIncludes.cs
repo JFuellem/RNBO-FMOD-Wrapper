@@ -27,8 +27,7 @@ namespace RNBOFMOD.UnityBuild
                 return;
             }
 
-            // Avoid nested path quotes in IL2CPP's command line on Windows.
-            // This relative path itself contains no spaces; paths inside are quoted.
+            // Response files avoid nested command-line quotes on Windows.
             const string response = "Library/RNBOFMOD/includes.rsp";
             Directory.CreateDirectory(Path.GetDirectoryName(response));
             var flags = new List<string>();

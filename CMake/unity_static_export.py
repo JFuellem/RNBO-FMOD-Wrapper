@@ -18,6 +18,11 @@ HEADER_SUFFIXES = {".h", ".hpp", ".hh", ".inl"}
 
 RUNTIME_AMALG = "RNBO_runtime_unity.cpp"
 FMOD_INC_MARKER = "FMOD_UnityInc.h"
+STATIC_UNUSED_SOURCES = {
+    "RNBO_Engine.cpp",
+    "RNBO_ParameterInterfaceAsync.cpp",
+    "RNBO_ExternalLoader.cpp",
+}
 
 
 def _guid() -> str:
@@ -103,18 +108,12 @@ def _unity_build_header(legacy_factory: bool) -> str:
 
 def _runtime_readme() -> str:
     return textwrap.dedent(
-        f"""\
+        """\
         # RNBO FMOD — Unity runtime
 
-        Drop this folder **once** under `Assets/` (e.g. `Assets/Plugins/RNBO_FMOD/Runtime/`).
-        Not under `Assets/Plugins/FMOD/platforms/.../lib`.
-
-        `{RUNTIME_AMALG}` is enabled by its supplied `.meta` file. Keep that file.
-        Do not add this folder to FMOD Static Plugins.
-
-        Also drop `FMOD_unity_inc/` under `Assets/` once (shared by all wrappers).
-        Each audio plugin is a separate `*_unity_static` folder. All RNBO plugins must
-        use the same RNBO export version as this runtime.
+        Required once under `Assets/`, alongside `FMOD_unity_inc/`.
+        RNBO version must match all plugin exports.
+        Dynamically loaded RNBO externals are unsupported.
         """
     )
 
@@ -124,15 +123,8 @@ def _fmod_readme() -> str:
         """\
         # FMOD headers — Unity IL2CPP
 
-        Drop this folder **once** under `Assets/` (e.g. `Assets/Plugins/FMOD_unity_inc/`).
-        Not under `Assets/Plugins/FMOD/platforms/.../lib`.
-
-        Shared by RNBO, HeavyPd, and Cmajor static plugins. Do not tick any
-        compile unit here, and do not add this folder to FMOD Static Plugins.
-
-        If FMOD headers are missing, put matching FMOD Engine `api/core/inc`
-        headers in the wrapper's `CMake/inc` and run `unity_static_export` again.
-        The exporter flattens headers and rewrites `.hpp` includes for Unity.
+        Required once under `Assets/`.
+        Source: matching FMOD Engine `api/core/inc` headers in `CMake/inc/`.
         """
     )
 
@@ -142,19 +134,12 @@ def _plugin_readme(plugin_name: str, amalg_name: str) -> str:
         f"""\
         # {plugin_name} — Unity static FMOD plugin
 
-        Also drop `FMOD_unity_inc/` and `RNBO_FMOD_runtime/` under `Assets/` (once
-        each). This folder is plugin-only and needs those two for FMOD / RNBO headers.
+        Requires `FMOD_unity_inc/` and `RNBO_FMOD_runtime/` once under `Assets/`.
+        RNBO version must match the shared runtime.
 
-        Example: `Assets/Plugins/RNBO_FMOD/Runtime/` and
-        `Assets/Plugins/RNBO_FMOD/{plugin_name}/`. Not under
-        `Assets/Plugins/FMOD/platforms/.../lib`.
-
-        Keep the supplied `.meta` files: they enable `{RUNTIME_AMALG}` in the
-        runtime folder and `{amalg_name}` here for players, excluding the Editor.
-        In their Plugin Inspectors, select your static IL2CPP targets and exclude
-        any targets using dynamic plugins instead.
-        In FMOD Settings, add `{plugin_name}_GetDSPDescription` to **Static Plugins**.
-        Keep the dynamic plugin on **Dynamic Plugins** for the Editor.
+        Compile units: `{amalg_name}` and `{RUNTIME_AMALG}` (static IL2CPP targets only).
+        FMOD Static Plugins entry: `{plugin_name}_GetDSPDescription`.
+        Editor: dynamic plugin.
         """
     )
 
@@ -164,7 +149,6 @@ def _editor_script() -> str:
 
 
 def _dest_name(rel: str, used_h: set[str]) -> str:
-    """Map a source-relative path to a flattened Unity filename."""
     rel_u = rel.replace("\\", "/")
     if rel_u.startswith("3rdparty/"):
         parts = Path(rel_u).parts[1:]
@@ -222,6 +206,16 @@ def _rewrite_file_text(text: str, from_rel: str, dest_by_rel: dict[str, str], us
     return INCLUDE_RE.sub(repl, text)
 
 
+def _static_runtime_text(text: str) -> str:
+    def repl(match: re.Match[str]) -> str:
+        name = posixpath.basename(match.group(2).replace("\\", "/"))
+        if name in STATIC_UNUSED_SOURCES:
+            return ""
+        return match.group(0)
+
+    return INCLUDE_RE.sub(repl, text)
+
+
 def _collect_flat_files(rnbo_root: Path) -> list[Path]:
     files: list[Path] = []
     files.append(rnbo_root / "RNBO.cpp")
@@ -259,6 +253,8 @@ def _emit_files(
         dst = root / dest
         dst.parent.mkdir(parents=True, exist_ok=True)
         raw = src.read_text(encoding="utf-8", errors="replace")
+        if rel == "RNBO.cpp":
+            raw = _static_runtime_text(raw)
         _write(dst, _rewrite_file_text(raw, rel, dest_by_rel, used_h))
 
 
@@ -387,9 +383,7 @@ def export_bundle(args: argparse.Namespace) -> None:
 
     print(f"Unity FMOD headers written to {fmod_out}")
     print(f"Unity RNBO runtime written to {runtime_out}")
-    print(f"Tick only: {RUNTIME_AMALG}")
     print(f"Unity plugin source written to {plugin_out}")
-    print(f"Tick only: {amalg_name}")
     print(f"Register in FMOD Static Plugins: {plugin}_GetDSPDescription")
 
 

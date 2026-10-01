@@ -1,10 +1,4 @@
-#CMAKE_HOST_SYSTEM_NAME
-
 cmake_minimum_required(VERSION 3.10.0)
-
-#--------------------------------------------------------------------------------
-# Basic Compiler and Project Setup
-#--------------------------------------------------------------------------------
 
 if(APPLE)
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
@@ -17,8 +11,7 @@ set(CMAKE_CXX_FLAGS -O3)
 
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 
-# -DPLUGIN_NAME from the pipeline is the signed dylib/bundle name. Keep it.
-# description.json rnboobjname is only the C++ factory prefix.
+# PLUGIN_NAME names the binary; rnboobjname names its C++ factory.
 if(PLUGIN_NAME)
     set(_PIPELINE_PLUGIN_NAME "${PLUGIN_NAME}")
 endif()
@@ -42,11 +35,6 @@ endif()
 if(NOT RNBO_FACTORY_CLASS)
     set(RNBO_FACTORY_CLASS "${PLUGIN_NAME}")
 endif()
-
-# meta.rnboversion: used to pick patcher factory API. RNBO 1.4.0+ exports use
-# PatcherFactoryFunctionPtr NameFactoryFunction() / NameFactoryFunction()();
-# older exports used NameFactoryFunction(PlatformInterface*) / ...Platform::get()().
-# See https://cycling74.com/releases/rnbo/1.4.0 (C++ export / lifecycle fixes in 1.4.x).
 string(REGEX MATCH "\"rnboversion\" *: *\"([^\"]*)\"" _RNBO_VER_MATCH "${JSON_DESCRIPTION}")
 set(RNBO_EXPORT_VERSION "${CMAKE_MATCH_1}")
 if(NOT RNBO_EXPORT_VERSION)
@@ -55,6 +43,7 @@ if(NOT RNBO_EXPORT_VERSION)
 endif()
 message(STATUS "RNBO export meta.rnboversion: ${RNBO_EXPORT_VERSION}")
 
+# Exports before RNBO 1.4 require PlatformInterface* in the factory signature.
 set(_RNBO_LEGACY_FACTORY_DEFAULT OFF)
 if(RNBO_EXPORT_VERSION VERSION_LESS "1.4.0")
     set(_RNBO_LEGACY_FACTORY_DEFAULT ON)
@@ -87,51 +76,33 @@ else()
 endif()
 message(STATUS "Building Project: ${PROJECT_NAME} for System: ${CMAKE_SYSTEM_NAME}")
 
-#--------------------------------------------------------------------------------
-# Source File Collections
-#--------------------------------------------------------------------------------
-
-# Generated file from the FMOD wrapper template (placeholders set above)
 configure_file(../RNBOWrapper/RNBO_FMOD.cpp.in ${CMAKE_BINARY_DIR}/RNBOWrapper/generated/RNBO_FMOD.cpp)
 file(GLOB GENERATED_FILES "${CMAKE_BINARY_DIR}/RNBOWrapper/generated/*")
 
-# All other source files
 file(GLOB RNBOSRC_FILES "${PARENT_DIR}/SrcExportDir/*.cpp")
 
-# --- Memory Leak Fix Integration ---
 option(APPLY_LEAKFIX "Apply memory leak fixes to generated source code (requires Python)" ON)
 if(APPLY_LEAKFIX)
     include(${CMAKE_CURRENT_SOURCE_DIR}/LeakFixer.cmake)
     rnbo_apply_leak_fix_to_list("${RNBOSRC_FILES}")
 endif()
-# -----------------------------------
 
-file(GLOB WRAPPER_HPP_FILES "../RNBOWrapper/RNBOWrapper.hpp") # For Xcode project
+file(GLOB WRAPPER_HPP_FILES "../RNBOWrapper/RNBOWrapper.hpp")
 
-# Create a library of object files containing the plugin-specific sources.
-# This doesn't produce a final library file, just a collection of .o files
-# that we can use to build our final static or shared libraries later.
 if(NOT RNBO_UNITY_SOURCE_ONLY)
 add_library(oLib OBJECT
     ${RNBOSRC_FILES}
     ${GENERATED_FILES}
 )
 
-# For Xcode, add header files to the project for easy editing.
 if(CMAKE_GENERATOR STREQUAL "Xcode")
     target_sources(oLib PRIVATE ${WRAPPER_HPP_FILES})
 endif()
 
-#--------------------------------------------------------------------------------
-# Platform-Specific Library Configuration
-#--------------------------------------------------------------------------------
-
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
-    # --- EMSCRIPTEN BUILD ---
-    # For Emscripten, we build all common code into a single static library
-    # called "rnbo_base" to avoid duplicate symbols when linking multiple plugins.
     message(STATUS "Configuring for Emscripten build")
 
+    # Shared runtime prevents duplicate symbols across plugins.
     add_library(rnbo_base STATIC
         "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.cpp"
         "${PARENT_DIR}/RNBOWrapper/RNBOWrapper.cpp"
@@ -139,7 +110,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     set_target_properties(rnbo_base PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "../BuildProducts")
     target_compile_definitions(rnbo_base PRIVATE ${_RNBO_WRAPPER_DEFS})
 
-    # The base library needs all the include paths
     target_include_directories(rnbo_base PRIVATE
         ./inc
         ${PARENT_DIR}/SrcExportDir
@@ -149,20 +119,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
         ${PARENT_DIR}/decoder
     )
 
-    # Create the final plugin-specific static library from our object files.
     add_library(${PROJECT_NAME} STATIC $<TARGET_OBJECTS:oLib>)
     set_target_properties(${PROJECT_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "../BuildProducts")
 
 else()
-    # --- ALL OTHER BUILDS (macOS, Windows, Linux, etc.) ---
-    # For other platforms, we compile all sources directly into the object library.
     message(STATUS "Configuring for non-Emscripten build")
     target_sources(oLib PRIVATE
         "${PARENT_DIR}/SrcExportDir/rnbo/RNBO.cpp"
         "${PARENT_DIR}/RNBOWrapper/RNBOWrapper.cpp"
     )
 
-    # Create the final shared library for the plugin.
     add_library(${PROJECT_NAME} SHARED $<TARGET_OBJECTS:oLib>)
 
     if(APPLE)
@@ -181,10 +147,6 @@ else()
     endif()
 endif()
 
-#--------------------------------------------------------------------------------
-# Common Include Directories for oLib
-# (Needed by all platforms to compile the plugin-specific sources)
-#--------------------------------------------------------------------------------
 target_include_directories(oLib PRIVATE
     ./inc
     ../SrcExportDir/rnbo
@@ -199,10 +161,6 @@ target_compile_definitions(oLib PRIVATE ${_RNBO_WRAPPER_DEFS})
 set_target_properties(oLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
 
-#--------------------------------------------------------------------------------
-# Unity static source (IL2CPP)
-# cmake --build Build --target unity_static_export
-#--------------------------------------------------------------------------------
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
     set(_UNITY_BUNDLE_DIR "${PARENT_DIR}/BuildProducts/${PROJECT_NAME}_unity_static")

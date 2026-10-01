@@ -3,7 +3,6 @@ import os
 import re
 
 def _find_closing_brace(content: str, start_index: int) -> int:
-    """Finds the matching closing brace for an opening brace at start_index."""
     if content[start_index] != '{':
         return -1
     
@@ -20,24 +19,14 @@ def _find_closing_brace(content: str, start_index: int) -> int:
     return -1
 
 def _apply_memory_leak_fix_to_content(content: str, file_path: str) -> str:
-    """
-    Parses C++ content to find RNBO patcher classes and injects memory freeing code
-    into destructors that are empty (whitespace-only). Destructors with any existing
-    statements are left unchanged.
-    """
+    """Add cleanup to empty destructors; preserve existing teardown."""
     modified_content = content
     class_name_found = None
-    
-    # This regex now finds the main class which is not a subpatcher
     class_regex = re.compile(r"class\s+([a-zA-Z0-9_]+)\s*:\s*public PatcherInterfaceImpl\s*{", re.DOTALL)
     
     matches = list(class_regex.finditer(modified_content))
-    
-    # We assume the main patcher class is the last one in the file that matches.
     if not matches:
         return content
-
-    # Iterate backwards to not mess up indices of later matches
     for match in reversed(matches):
         class_name = match.group(1)
         class_name_found = class_name
@@ -49,12 +38,8 @@ def _apply_memory_leak_fix_to_content(content: str, file_path: str) -> str:
             continue
             
         class_body_text = modified_content[class_body_start_match + 1 : class_body_end]
-
-        # First, remove all method bodies to isolate member variables.
         method_regex = re.compile(r"\w+\s*\(.*?\)\s*\{.*?\}", re.DOTALL)
         members_only_text = re.sub(method_regex, '', class_body_text)
-        
-        # Also remove nested class definitions from our search space temporarily
         nested_class_regex = re.compile(r"class\s+\w+\s*:\s*public PatcherInterfaceImpl\s*\{.*?\};", re.DOTALL)
         members_only_text = re.sub(nested_class_regex, '', members_only_text)
 
@@ -63,20 +48,14 @@ def _apply_memory_leak_fix_to_content(content: str, file_path: str) -> str:
             stripped_line = line.strip()
             if not stripped_line or stripped_line.startswith('//') or stripped_line.startswith('/*'):
                 continue
-
-            # 1. Pointer arrays (e.g., SampleValue* signals[6];)
             m = re.match(r"^(?:SampleValue\s*\*\s*|signal\s+)([a-zA-Z0-9_]+)\[(\d+)\];", stripped_line)
             if m:
                 members_to_free.append({'type': 'signal_array', 'name': m.group(1), 'size': int(m.group(2))})
                 continue
-
-            # 2. BufferRef types (e.g., Float32BufferRef my_buffer;)
             m = re.match(r"^[a-zA-Z0-9]+BufferRef\s+([a-zA-Z0-9_]+);", stripped_line)
             if m:
                 members_to_free.append({'type': 'buffer_ref', 'name': m.group(1)})
                 continue
-
-            # 3. signal type (which is a pointer that needs freeing)
             m = re.match(r"^signal\s+([a-zA-Z0-9_]+);", stripped_line)
             if m:
                 members_to_free.append({'type': 'signal', 'name': m.group(1)})
@@ -99,8 +78,6 @@ def _apply_memory_leak_fix_to_content(content: str, file_path: str) -> str:
 
         if not cleanup_lines:
             continue
-
-        # Now, find the destructor in the original class body to inject the code
         destructor_regex = re.compile(r"~\s*" + re.escape(class_name) + r"\s*\(\s*\)\s*\{")
         destructor_match = destructor_regex.search(modified_content, match.start(), class_body_end)
         
@@ -108,23 +85,16 @@ def _apply_memory_leak_fix_to_content(content: str, file_path: str) -> str:
             continue
             
         destructor_body_start = destructor_match.end() - 1
-        
-        # Check if the fix is already present
         destructor_body_end = _find_closing_brace(modified_content, destructor_body_start)
         if destructor_body_end == -1:
             continue
 
         destructor_body_content = modified_content[destructor_body_start : destructor_body_end]
-        # RNBO exports now ship with deallocateSignals() and similar in ~T(); only patch
-        # legacy empty destructors. Non-empty body is left unchanged (avoids duplicate
-        # teardown and bad Platform::get()->free on newer SDKs).
         if destructor_body_content.strip():
             print(
                 f"Skipping ~{class_name}(): destructor not empty ({os.path.basename(file_path)})"
             )
             continue
-
-        # Inject code before the final brace of the destructor
         insertion_point = destructor_body_end
         
         cleanup_code_str = "    " + "\n    ".join(cleanup_lines) + "\n"

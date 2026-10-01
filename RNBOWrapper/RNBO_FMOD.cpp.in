@@ -1,10 +1,3 @@
-//
-//  RNBO_FMOD.cpp
-//  RNBO_FMOD
-//
-//  Created by Jonas Füllemann on 09.11.23.
-//
-
 #include <stdio.h>
 
 #include <string.h>
@@ -106,15 +99,13 @@ extern "C" {
     for(;i<n;i++)
     {
         const char *id = obj.getParameterId(i);
-        //skip all subpatch params
         if (strstr(id, "/") != nullptr)
             continue;
         
         const char *name = obj.getParameterName(i);
         if(std::char_traits<char>::compare(name, "Name", 4) == 0)
         {
-            //Deprecated, still skip name param in case there are still patchers that contain it
-            //strcpy(FMOD_RNBO_@PLUGIN_NAME@_Desc.name, &name[5]);
+            // Reserved by legacy exports.
         }
         else if (std::char_traits<char>::compare(name, "Sys_tail", 8) == 0)
         {
@@ -127,7 +118,6 @@ extern "C" {
             FMOD_RNBO_@PLUGIN_NAME@_DSPParam[finalParameters] = &FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters];
             FMOD_RNBO_@PLUGIN_NAME@_UserData.indexMap[finalParameters] = i;
             FMOD_DSP_INIT_PARAMDESC_FLOAT(FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters], name, info.unit, "The RNBO param:" , info.min, info.max , info.initialValue);
-            // Override the mapping type to LINEAR instead of AUTO -> optimally this should be settable by the user later...
             FMOD_RNBO_@PLUGIN_NAME@_Parameters[finalParameters].floatdesc.mapping.type = FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_LINEAR;
             finalParameters++;
         }
@@ -194,10 +184,6 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspcreate(FMOD_DSP_STATE *dsp_sta
     state->isInstrument = ((FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct*)rawData)->isInstrument;
     state->multiChannelExpandable = ((FMOD_RNBO_@PLUGIN_NAME@_UserDataStruct*)rawData)->multiChannelExtendable;
     FMOD_DSP_GETSAMPLERATE(dsp_state, &state->sampleRate);
-    
-    //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Create","Taillength: %d", state->tailLength);
-    //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Create","Is istrument: %d", state->isInstrument);
-    //FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Create","Multichannelthing: %d", state->multiChannelExpandable);
     
     state->Init(@RNBO_FACTORY_CLASS@FactoryFunction);
     
@@ -289,8 +275,6 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspprocess(FMOD_DSP_STATE *dsp_st
     {
         auto chans = inbufferarray->buffernumchannels[0];
         size_t processChans = std::min((size_t)chans, state->rnboObj.size());
-        
-        //de-interleave
         for(size_t i(0);i<length;i++)
         {
             for(size_t c(0);c<chans;c++)
@@ -298,21 +282,15 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspprocess(FMOD_DSP_STATE *dsp_st
                 state->deInterleaveBuffer[c*length + i] = inbufferarray[0].buffers[0][chans*i + c];
             }
         }
-        
-        //process
         for(size_t i(0);i<processChans;i++)
         {
             state->rnboObj[i]->process<float*>(&state->deInterleaveBuffer[i*length], 1, &state->interleaveBuffer[i*length], 1, length);
         }
-        
-        // Clear remaining channels in interleave buffer if any (silence)
         if (processChans < chans) {
             size_t processedSamples = processChans * length;
             size_t totalSamples = chans * length;
             memset(state->interleaveBuffer + processedSamples, 0, (totalSamples - processedSamples) * sizeof(float));
         }
-        
-        //interleave
         for(size_t c(0);c<chans;c++)
         {
             for(size_t i(0);i<length;i++)
@@ -344,15 +322,8 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspprocess(FMOD_DSP_STATE *dsp_st
             state->timeStore = state->rnboObj[0]->getCurrentTime();
         }
     }
-    /*
-    static size_t counter = 0;
-    if (counter % 500 == 0)
-        FMOD_DSP_LOG(dsp_state, FMOD_DEBUG_LEVEL_LOG, "Proc","Idle: %i", inputsidle);
-    counter++;
-    */
     return FMOD_OK;
 }
-
 
 FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspreset(FMOD_DSP_STATE *dsp_state)
 {
@@ -452,7 +423,6 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspsetparamdata(FMOD_DSP_STATE *d
 
 FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_dspgetparamdata(FMOD_DSP_STATE *dsp_state, int index, void ** /*value*/, unsigned int * /*length*/, char * /*valuestr*/)
 {
-    //unused
 
     return FMOD_ERR_INVALID_PARAM;
 }
@@ -480,6 +450,4 @@ FMOD_RESULT F_CALLBACK FMOD_RNBO_@PLUGIN_NAME@_sys_mix(FMOD_DSP_STATE * /*state*
 {
     return FMOD_OK;
 }
-
-
 
